@@ -265,27 +265,22 @@ export default function PageUnificada() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen text-xl">Cargando plataforma unificada...</div>;
+    return <div className="flex justify-center items-center h-screen text-xl">Cargando...</div>;
   }
 
-  // ==========================================
-  // RENDERIZADO
-  // ==========================================
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-      
-      {/* TÍTULO Y SELECTORES */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-        <h1 className="text-2xl font-bold text-gray-800">Panel General de Ausentismos</h1>
-        <div className="flex space-x-4">
+    <div className="space-y-6 min-h-screen">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h1 className="text-2xl font-bold text-gray-800">Ausentismos</h1>
+        <div className="flex space-x-4 text-center">
           <div className="flex flex-col">
-            <label className="text-xs text-gray-500 font-semibold mb-1">Año 1 (Base)</label>
+            <label className="text-xs text-gray-500 font-semibold mb-1">Año 1</label>
             <select className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" value={anio1} onChange={(e) => setAnio1(e.target.value)}>
               {availableYears.map(year => <option key={`a1-${year}`} value={year}>{year}</option>)}
             </select>
           </div>
           <div className="flex flex-col">
-            <label className="text-xs text-gray-500 font-semibold mb-1">Año 2 (Comparación)</label>
+            <label className="text-xs text-gray-500 font-semibold mb-1">Año 2</label>
             <select className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" value={anio2} onChange={(e) => setAnio2(e.target.value)}>
               {availableYears.map(year => <option key={`a2-${year}`} value={year}>{year}</option>)}
             </select>
@@ -293,30 +288,41 @@ export default function PageUnificada() {
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-blue-500 flex flex-col justify-center">
-          <span className="text-gray-500 text-sm font-semibold uppercase tracking-wider">Total Empleados</span>
-          <span className="text-3xl font-bold text-gray-800">{totalEmpleados}</span>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="p-4 rounded-lg border-1 border-yellow-500 flex flex-col justify-center">
+          <span className="text-sm tracking-wider">Total Empleados</span>
+          <span className="text-3xl">{totalEmpleados}</span>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-red-500 flex flex-col justify-center">
-          <span className="text-gray-500 text-sm font-semibold uppercase tracking-wider">Total Ausentismos</span>
-          <span className="text-3xl font-bold text-gray-800">{totalLicencias}</span>
+        <div className="p-4 rounded-lg border-1 border-blue-500 flex flex-col justify-center">
+          <span className="text-sm tracking-wider">Total Ausentismos</span>
+          <span className="text-3xl">{totalLicencias}</span>
+        </div>
+        <div className="p-4 rounded-lg border-1 border-red-500 flex flex-col justify-center">
+          <span className="text-sm tracking-wider">Total</span>
+          <span className="text-3xl">KPI</span>
+        </div>
+        <div className="p-4 rounded-lg border-1 border-green-500 flex flex-col justify-center">
+          <span className="text-sm tracking-wider">Total</span>
+          <span className="text-3xl">KPI</span>
         </div>
       </div>
 
-      {/* GRÁFICAS (Grid modificado a 6 cuadrantes) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6">
-        <Chart0 data={datosDiagnosticos} labelAnio1={anio1} labelAnio2={anio2} />
-        <Chart1 data={datosCargos} labelAnio1={anio1} labelAnio2={anio2} />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Aquí está la magia: Hacemos que Chart 0 tome las 2 columnas */}
+        <div className="col-span-1 xl:col-span-2">
+          <Chart0 data={datosDiagnosticos} labelAnio1={anio1} labelAnio2={anio2} />
+          <Chart1 data={datosCargos} labelAnio1={anio1} labelAnio2={anio2} />
         <Chart2 data={datosTipos} labelAnio1={anio1} labelAnio2={anio2} />
         <Chart3 data={datosAreas} labelAnio1={anio1} labelAnio2={anio2} />
         <Chart4 data={datosEdades} labelAnio1={anio1} labelAnio2={anio2} />
         <Chart5 data={datosAntiguedad} labelAnio1={anio1} labelAnio2={anio2} />
+        </div>
+        
+        {/* El resto de gráficas siguen su comportamiento normal */}
+        
       </div>
 
-      {/* TABLA DE EMPLEADOS */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 space-y-4">
+      <div className="p-6 rounded-lg border-1 border-black-100 space-y-4">
         <h2 className="text-xl font-bold text-gray-800">Directorio de Colaboradores</h2>
         
         <div>
@@ -336,9 +342,8 @@ export default function PageUnificada() {
           <table className="w-full text-left border-collapse min-w-max">
             <thead>
               <tr className="bg-gray-100 text-gray-700 border-b">
-                <th className="p-3">Perfil</th>
-                <th className="p-3">Colaborador</th>
-                <th className="p-3">Cargo y Área</th>
+                <th className="p-3 text-center">Colaborador</th>
+                <th className="p-3 text-center">Cargo y Área</th>
                 <th className="p-3 text-center">Total Licencias</th>
                 <th className="p-3 text-center">Acciones</th>
               </tr>
@@ -348,7 +353,7 @@ export default function PageUnificada() {
                 const cantidadLicencias = row.licencias ? row.licencias.length : 0;
                 return (
                   <tr key={row.employee_id} className="hover:bg-gray-50 border-b transition-colors text-sm">
-                    <td className="p-3">
+                    <td className="p-3 font-medium text-gray-900">
                       {row.picture_url ? (
                         <img src={row.picture_url} alt={row.full_name} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
                       ) : (
@@ -356,8 +361,6 @@ export default function PageUnificada() {
                           {row.full_name.charAt(0)}
                         </div>
                       )}
-                    </td>
-                    <td className="p-3 font-medium text-gray-900">
                       {row.full_name} <br />
                       {row.document_number}
                     </td>
@@ -387,7 +390,7 @@ export default function PageUnificada() {
         </div>
 
         <div className="flex items-center justify-between border-t pt-4">
-          <span className="text-sm text-gray-600">Total empleados: {filteredData.length} | Mostrando página {currentPage} de {totalPages || 1}</span>
+          <span className="text-sm text-gray-600">Mostrando página {currentPage} de {totalPages || 1}</span>
           <div className="space-x-2">
             <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="px-4 py-2 border bg-white rounded text-sm disabled:opacity-50 hover:bg-gray-50">Anterior</button>
             <button disabled={currentPage >= totalPages || totalPages === 0} onClick={() => setCurrentPage(p => p + 1)} className="px-4 py-2 border bg-white rounded text-sm disabled:opacity-50 hover:bg-gray-50">Siguiente</button>
