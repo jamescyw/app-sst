@@ -4,10 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { Menu, LogOut, Stethoscope } from 'lucide-react';
 
 const MODULES_CONFIG = [
-  { id: 'page1', path: '/page1', label: 'General', icon: Stethoscope },
-  { id: 'page2', path: '/page2', label: 'Osteomuscular', icon: Stethoscope },
+  { id: 'page1', path: '/page1', label: 'Salud General', icon: Stethoscope },
+  { id: 'page2', path: '/page2', label: 'Salud Mental', icon: Stethoscope },
   { id: 'page3', path: '/page3', label: 'Ausentismos', icon: Stethoscope },
-  { id: 'page4', path: '/page4', label: 'Mental', icon: Stethoscope },
+  { id: 'page4', path: '/page4', label: 'Osteomuscular', icon: Stethoscope },
   // { id: 'page5', path: '/page5', label: 'Módulo 5', icon: Stethoscope },
   // { id: 'page6', path: '/page6', label: 'Módulo 6', icon: Stethoscope },
   // { id: 'page7', path: '/page7', label: 'Módulo 7', icon: Stethoscope }
@@ -19,8 +19,8 @@ export default function Sidebar() {
 
   return (
     <div className={`bg-gray-800 text-white transition-all duration-300 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} h-screen sticky top-0`}>
-      <div className="p-4 flex items-center justify-between border-b border-gray-700">
-        {!isCollapsed && <span className="text-xl truncate">¡Hola!</span>}
+      <div className="p-4 flex items-center justify-between">
+        {!isCollapsed && <span className="text-xl truncate"></span>}
         <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-2 hover:bg-gray-700 rounded">
           <Menu size={24} />
         </button>
@@ -38,14 +38,14 @@ export default function Sidebar() {
           )}
           {!isCollapsed && (
             <div className="text-center overflow-hidden">
-              <p className="text-sm font-bold truncate w-full">{user.nombre}</p>
-              <p className="text-xs text-gray-300 truncate w-full">{user.cargo}</p>
+              <p className="text-sm break-words w-full">{user.nombre}</p>
+              <p className="text-xs break-words w-full">{user.cargo}</p>
             </div>
           )}
         </div>
       )}
 
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+      <nav className="flex-1 p-4 overflow-y-auto">
         {MODULES_CONFIG.map((item) => {
           const Icon = item.icon;
           // Validamos si el usuario tiene este id en sus módulos permitidos
@@ -73,7 +73,7 @@ export default function Sidebar() {
               className="flex items-center gap-4 p-3 rounded text-gray-500 bg-gray-800 opacity-60 cursor-not-allowed"
             >
               <Icon size={24} className="min-w-6" />
-              {!isCollapsed && <span>{item.label} (Bloqueado)</span>}
+              {!isCollapsed && <span>{item.label} (En desarrollo)</span>}
             </div>
           );
         })}

@@ -5,6 +5,8 @@ import Chart2 from './charts/Chart2'; // Tipos
 import Chart3 from './charts/Chart3'; // Áreas
 import Chart4 from './charts/Chart4'; // Edades
 import Chart5 from './charts/Chart5'; // Antigüedad
+import Chart6 from './charts/Chart6'; // Días Perdidos por Tipo
+import Chart7 from './charts/Chart7'; // Días Perdidos por Mes y Tipo
 
 export default function PageUnificada() {
   const [rawData, setRawData] = useState([]);
@@ -79,10 +81,7 @@ export default function PageUnificada() {
     fetchDatos();
   }, []);
 
-  // ==========================================
   // 2. PROCESAMIENTO DE DATOS
-  // ==========================================
-  
   const filteredData = useMemo(() => {
     return rawData.filter(emp => 
       emp.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -253,6 +252,58 @@ export default function PageUnificada() {
     return Object.values(conteo);
   }, [rawData, anio1, anio2]);
 
+  // Chart6: Días Perdidos por Tipo
+  const datosDiasPerdidos = useMemo(() => {
+    if (!rawData.length || !anio1 || !anio2) return [];
+    const conteo = {};
+    rawData.forEach(emp => {
+      if (emp.licencias && emp.licencias.length > 0) {
+        emp.licencias.forEach(lic => {
+          if (lic.start_date && lic.licence_type) {
+            const year = lic.start_date.substring(0, 4);
+            if (year === anio1 || year === anio2) {
+              const tipo = lic.licence_type;
+              const dias = parseFloat(lic.days_count) || 0;
+              if (!conteo[tipo]) conteo[tipo] = { tipo, diasAnio1: 0, diasAnio2: 0 };
+              
+              if (year === anio1) conteo[tipo].diasAnio1 += dias;
+              if (year === anio2) conteo[tipo].diasAnio2 += dias;
+            }
+          }
+        });
+      }
+    });
+    return Object.values(conteo);
+  }, [rawData, anio1, anio2]);
+
+  // Chart7: Días Perdidos por Mes y Tipo
+  const datosDiasMeses = useMemo(() => {
+    if (!rawData.length || !anio1 || !anio2) return [];
+    const conteo = {};
+    rawData.forEach(emp => {
+      if (emp.licencias && emp.licencias.length > 0) {
+        emp.licencias.forEach(lic => {
+          if (lic.start_date && lic.licence_type) {
+            const year = lic.start_date.substring(0, 4);
+            const mesIndex = parseInt(lic.start_date.substring(5, 7), 10) - 1; // 0 = Ene, 11 = Dic
+
+            if (year === anio1 || year === anio2) {
+              const tipo = lic.licence_type;
+              const dias = parseFloat(lic.days_count) || 0;
+              if (!conteo[tipo]) {
+                conteo[tipo] = { tipo, y1: Array(12).fill(0), y2: Array(12).fill(0) };
+              }
+              
+              if (year === anio1) conteo[tipo].y1[mesIndex] += dias;
+              if (year === anio2) conteo[tipo].y2[mesIndex] += dias;
+            }
+          }
+        });
+      }
+    });
+    return Object.values(conteo);
+  }, [rawData, anio1, anio2]);
+
   // Funciones Modal
   const openModal = (employee) => {
     setSelectedEmployee(employee);
@@ -289,47 +340,44 @@ export default function PageUnificada() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-lg border-1 border-yellow-500 flex flex-col justify-center">
-          <span className="text-sm tracking-wider">Total Empleados</span>
+        <div className="p-4 rounded-lg border-1 border-gray-300 flex flex-col justify-center">
+          <span className="text-sm tracking-wider">Colaboradores</span>
           <span className="text-3xl">{totalEmpleados}</span>
         </div>
-        <div className="p-4 rounded-lg border-1 border-blue-500 flex flex-col justify-center">
-          <span className="text-sm tracking-wider">Total Ausentismos</span>
+        <div className="p-4 rounded-lg border-1 border-gray-300 flex flex-col justify-center">
+          <span className="text-sm tracking-wider">Ausentismos</span>
           <span className="text-3xl">{totalLicencias}</span>
         </div>
-        <div className="p-4 rounded-lg border-1 border-red-500 flex flex-col justify-center">
-          <span className="text-sm tracking-wider">Total</span>
-          <span className="text-3xl">KPI</span>
+        <div className="p-4 rounded-lg border-1 border-gray-300 flex flex-col justify-center">
+          <span className="text-sm tracking-wider">Kpi3</span>
+          <span className="text-3xl">KPI3</span>
         </div>
-        <div className="p-4 rounded-lg border-1 border-green-500 flex flex-col justify-center">
-          <span className="text-sm tracking-wider">Total</span>
-          <span className="text-3xl">KPI</span>
+        <div className="p-4 rounded-lg border-1 border-gray-300 flex flex-col justify-center">
+          <span className="text-sm tracking-wider">Kpi4</span>
+          <span className="text-3xl">KPI4</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Aquí está la magia: Hacemos que Chart 0 tome las 2 columnas */}
         <div className="col-span-1 xl:col-span-2">
           <Chart0 data={datosDiagnosticos} labelAnio1={anio1} labelAnio2={anio2} />
           <Chart1 data={datosCargos} labelAnio1={anio1} labelAnio2={anio2} />
-        <Chart2 data={datosTipos} labelAnio1={anio1} labelAnio2={anio2} />
-        <Chart3 data={datosAreas} labelAnio1={anio1} labelAnio2={anio2} />
-        <Chart4 data={datosEdades} labelAnio1={anio1} labelAnio2={anio2} />
-        <Chart5 data={datosAntiguedad} labelAnio1={anio1} labelAnio2={anio2} />
+          <Chart2 data={datosTipos} labelAnio1={anio1} labelAnio2={anio2} />
+          <Chart6 data={datosDiasPerdidos} labelAnio1={anio1} labelAnio2={anio2} />
+          <Chart7 data={datosDiasMeses} labelAnio1={anio1} labelAnio2={anio2} />
+          <Chart3 data={datosAreas} labelAnio1={anio1} labelAnio2={anio2} />
+          <Chart4 data={datosEdades} labelAnio1={anio1} labelAnio2={anio2} />
+          <Chart5 data={datosAntiguedad} labelAnio1={anio1} labelAnio2={anio2} />
         </div>
-        
-        {/* El resto de gráficas siguen su comportamiento normal */}
-        
       </div>
 
-      <div className="p-6 rounded-lg border-1 border-black-100 space-y-4">
-        <h2 className="text-xl font-bold text-gray-800">Directorio de Colaboradores</h2>
-        
-        <div>
+      <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <h2 className="text-xl font-bold text-gray-800">Colaboradores</h2>
           <input 
             type="text" 
             placeholder="Buscar por nombre o documento..." 
-            className="p-2 border border-gray-300 rounded w-full md:w-1/3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-2 text-sm border border-gray-200 rounded-md w-full md:w-80 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-shadow"
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -338,44 +386,54 @@ export default function PageUnificada() {
           />
         </div>
 
-        <div className="overflow-x-auto rounded-lg">
-          <table className="w-full text-left border-collapse min-w-max">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse text-sm">
             <thead>
-              <tr className="bg-gray-100 text-gray-700 border-b">
-                <th className="p-3 text-center">Colaborador</th>
-                <th className="p-3 text-center">Cargo y Área</th>
-                <th className="p-3 text-center">Total Licencias</th>
-                <th className="p-3 text-center">Acciones</th>
+              <tr>
+                <th className="p-2 font-semibold text-gray-700">Colaborador</th>
+                <th className="p-2 font-semibold text-gray-700 text-center">Cargo y Área</th>
+                <th className="p-2 font-semibold text-gray-700 text-center">Total Licencias</th>
+                <th className="p-2 font-semibold text-gray-700 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {currentData.length > 0 ? currentData.map((row) => {
                 const cantidadLicencias = row.licencias ? row.licencias.length : 0;
                 return (
-                  <tr key={row.employee_id} className="hover:bg-gray-50 border-b transition-colors text-sm">
-                    <td className="p-3 font-medium text-gray-900">
-                      {row.picture_url ? (
-                        <img src={row.picture_url} alt={row.full_name} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold">
-                          {row.full_name.charAt(0)}
+                  <tr key={row.employee_id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
+                    <td className="p-2">
+                      <div className="flex items-center gap-3">
+                        {row.picture_url ? (
+                          <img src={row.picture_url} alt={row.full_name} className="w-9 h-9 rounded-full object-cover border border-gray-200" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-xs border border-gray-200">
+                            {row.full_name.charAt(0)}
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-medium text-gray-800">{row.full_name}</div>
+                          <div className="text-xs text-gray-500">{row.document_number}</div>
                         </div>
-                      )}
-                      {row.full_name} <br />
-                      {row.document_number}
+                      </div>
                     </td>
-                    <td className="p-3 text-gray-600">
-                      {row.cargo} <br />
-                      {row.area}
+                    <td className="p-2 text-center">
+                      <div className="text-gray-700 font-medium">{row.cargo}</div>
+                      <div className="text-gray-500 text-xs">{row.area}</div>
                     </td>
-                    <td className="p-3 text-center">
-                      <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-bold">{cantidadLicencias}</span>
+                    <td className="p-2 text-center">
+                      <span className="bg-red-50 text-red-600 text-xs px-2.5 py-1 rounded-full font-semibold">
+                        {cantidadLicencias}
+                      </span>
                     </td>
-                    <td className="p-3 text-center">
+                    <td className="p-2 text-center">
                       <button 
                         onClick={() => openModal(row)}
                         disabled={cantidadLicencias === 0}
-                        className={`text-sm px-3 py-1 rounded transition-colors ${cantidadLicencias > 0 ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                        className={`text-xs px-3 py-1.5 rounded-md transition-colors font-medium ${
+                          cantidadLicencias > 0 
+                            ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' 
+                            : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                        }`}
                       >
                         Ver Detalles
                       </button>
@@ -383,68 +441,105 @@ export default function PageUnificada() {
                   </tr>
                 );
               }) : (
-                <tr><td colSpan="7" className="p-6 text-center text-gray-500">No se encontraron colaboradores.</td></tr>
+                <tr>
+                  <td colSpan="4" className="p-8 text-center text-gray-500 bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
+                    No se encontraron colaboradores.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
         </div>
 
-        <div className="flex items-center justify-between border-t pt-4">
-          <span className="text-sm text-gray-600">Mostrando página {currentPage} de {totalPages || 1}</span>
-          <div className="space-x-2">
-            <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="px-4 py-2 border bg-white rounded text-sm disabled:opacity-50 hover:bg-gray-50">Anterior</button>
-            <button disabled={currentPage >= totalPages || totalPages === 0} onClick={() => setCurrentPage(p => p + 1)} className="px-4 py-2 border bg-white rounded text-sm disabled:opacity-50 hover:bg-gray-50">Siguiente</button>
+        <div className="flex items-center justify-between border-t border-gray-100 pt-4">
+          <span className="text-sm text-gray-500">Mostrando página {currentPage} de {totalPages || 1}</span>
+          <div className="flex gap-2">
+            <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="px-3 py-1.5 border border-gray-200 bg-white rounded-md text-sm text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors">
+              Anterior
+            </button>
+            <button disabled={currentPage >= totalPages || totalPages === 0} onClick={() => setCurrentPage(p => p + 1)} className="px-3 py-1.5 border border-gray-200 bg-white rounded-md text-sm text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors">
+              Siguiente
+            </button>
           </div>
         </div>
       </div>
 
       {/* MODAL */}
       {isModalOpen && selectedEmployee && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl w-11/12 max-w-5xl max-h-[85vh] flex flex-col overflow-hidden">
-            <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-              <div className="flex items-center space-x-3">
-                {selectedEmployee.picture_url && <img src={selectedEmployee.picture_url} alt="profile" className="w-12 h-12 rounded-full object-cover" />}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-11/12 max-w-5xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Header del Modal */}
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+              <div className="flex items-center space-x-4">
+                {selectedEmployee.picture_url ? (
+                  <img src={selectedEmployee.picture_url} alt="profile" className="w-12 h-12 rounded-full object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-lg border border-gray-200">
+                    {selectedEmployee.full_name.charAt(0)}
+                  </div>
+                )}
                 <div>
-                  <h3 className="text-lg font-bold text-gray-800">Ausentismos: {selectedEmployee.full_name}</h3>
-                  <p className="text-sm text-gray-500">{selectedEmployee.cargo} - {selectedEmployee.area}</p>
+                  <h3 className="text-lg font-bold text-gray-800">{selectedEmployee.full_name}</h3>
+                  <p className="text-sm text-gray-500">{selectedEmployee.cargo}</p>
+                  <p className="text-sm text-gray-500">{selectedEmployee.area}</p>
                 </div>
               </div>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-700 font-bold text-2xl">&times;</button>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-700 transition-colors">
+                <span className="text-2xl leading-none">&times;</span>
+              </button>
             </div>
+
+            {/* Cuerpo del Modal */}
             <div className="p-6 overflow-y-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-gray-100 text-gray-700">
-                    <th className="p-3 border-b text-sm">Inicio</th>
-                    <th className="p-3 border-b text-sm">Fin</th>
-                    <th className="p-3 border-b text-sm">Días</th>
-                    <th className="p-3 border-b text-sm">Tipo de Incapacidad</th>
-                    <th className="p-3 border-b text-sm">Diagnóstico (CIE-10)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedEmployee.licencias.map((lic) => (
-                    <tr key={lic.buk_licence_id} className="hover:bg-gray-50 border-b text-sm">
-                      <td className="p-3 text-gray-800">{lic.start_date}</td>
-                      <td className="p-3 text-gray-800">{lic.end_date}</td>
-                      <td className="p-3 text-center font-semibold">{lic.days_count}</td>
-                      <td className="p-3 text-gray-600">
-                        <span className="block font-medium">{lic.licence_type}</span>
-                        <span className="text-xs text-gray-400">({lic.licence_format})</span>
-                      </td>
-                      <td className="p-3 text-gray-600">
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-semibold mr-2">{lic.codigo_incapacidad_colombia}</span>
-                        <span className="text-xs">{lic.descripcion_codigo_incapacidad_colombia}</span>
-                      </td>
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr>
+                      <th className="p-2 font-semibold text-gray-700">Inicio</th>
+                      <th className="p-2 font-semibold text-gray-700">Fin</th>
+                      <th className="p-2 font-semibold text-gray-700 text-center">Días</th>
+                      <th className="p-2 font-semibold text-gray-700">Tipo de Incapacidad</th>
+                      <th className="p-2 font-semibold text-gray-700">Diagnóstico (CIE-10)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {selectedEmployee.licencias.map((lic) => (
+                      <tr key={lic.buk_licence_id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
+                        <td className="p-2 text-gray-600 whitespace-nowrap">{lic.start_date}</td>
+                        <td className="p-2 text-gray-600 whitespace-nowrap">{lic.end_date}</td>
+                        <td className="p-2 text-center font-medium text-gray-800">{lic.days_count}</td>
+                        <td className="p-2">
+                          <span className="block text-gray-700 font-medium">{lic.licence_type}</span>
+                          <span className="text-xs text-gray-500">{lic.licence_format}</span>
+                        </td>
+                        <td className="p-2">
+                          <div className="flex items-start gap-2">
+                            <span className="bg-blue-50 text-blue-600 text-xs px-2 py-0.5 rounded-md font-semibold whitespace-nowrap">
+                              {lic.codigo_incapacidad_colombia}
+                            </span>
+                            <span className="text-gray-600 text-sm line-clamp-2" title={lic.descripcion_codigo_incapacidad_colombia}>
+                              {lic.descripcion_codigo_incapacidad_colombia}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end">
-              <button onClick={closeModal} className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors">Cerrar</button>
+
+            {/* Footer del Modal */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end">
+              <button 
+                onClick={closeModal} 
+                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm"
+              >
+                Cerrar
+              </button>
             </div>
+
           </div>
         </div>
       )}
