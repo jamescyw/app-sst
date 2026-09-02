@@ -1,32 +1,45 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { API_REPORTES } from "./config/api";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useAuth } from "../../context/AuthContext";
 import { fmtDate, badgeLabel } from "./utils/helpers";
 import { computeStats } from "./utils/stats";
-import { RotateCcw } from "lucide-react";
-import Avatar from "./components/Avatar";
+import { RotateCcw, Plus } from "lucide-react";
+
+// Gráficas y Modales
 import CasePanel from "./components/CasePanel";
 import BarChart from "./charts/BarChart";
 import PieChart from "./charts/PieChart";
 import LineChart from "./charts/LineChart";
+import ReporteForm from "./components/ReporteForm";
 
-// Función auxiliar para los colores de los badges con Tailwind
+// Utilidad para colores de estado
 const getBadgeClasses = (estado = "") => {
   const e = estado.toLowerCase();
-  if (e === "abierto") return "bg-[#FFF8ED] text-[#b7791f]";
-  if (e === "cerrado") return "bg-[#F0FFF4] text-[#276749]";
-  if (e === "seguimiento") return "bg-[#E6F7F6] text-[#007a70]";
-  if (e === "vencido") return "bg-[#FFF5F5] text-[#E53E3E]";
-  return "bg-gray-100 text-gray-700";
+  if (e === "abierto") return "bg-orange-50 text-orange-600 border border-orange-200";
+  if (e === "cerrado") return "bg-green-50 text-green-700 border border-green-200";
+  if (e === "seguimiento") return "bg-teal-50 text-teal-700 border border-teal-200";
+  if (e === "vencido") return "bg-red-50 text-red-600 border border-red-200";
+  return "bg-gray-100 text-gray-700 border border-gray-200";
 };
 
-export default function SST({ user }) {
+const AvatarInline = ({ src, name }) => (
+  src ? (
+    <img src={src} alt={name} className="w-9 h-9 rounded-full object-cover border border-gray-200" />
+  ) : (
+    <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-xs border border-gray-200">
+      {name ? name.charAt(0).toUpperCase() : "?"}
+    </div>
+  )
+);
+
+export default function SaludGeneralModule() {
+  const { user } = useAuth();
   const [reportes, setReportes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [kpiFilter, setKpiFilter] = useState("todos");
   const [search, setSearch] = useState("");
   const [soloMios, setSoloMios] = useState(false);
 
-  // --- NUEVOS ESTADOS DE FILTROS ---
+  // FILTROS AVANZADOS
   const [filterCiudad, setFilterCiudad] = useState("");
   const [filterCargo, setFilterCargo] = useState("");
   const [filterArea, setFilterArea] = useState("");
@@ -36,28 +49,53 @@ export default function SST({ user }) {
   const [selectedReporte, setSelectedReporte] = useState(null);
   const [panelOpen, setPanelOpen] = useState(false);
 
-  // --- ESTADOS PARA PAGINACIÓN ---
+  // ESTADOS MODAL LÍDER Y REPORTE
+  const [isLiderModalOpen, setIsLiderModalOpen] = useState(false);
+  const [liderCC, setLiderCC] = useState("");
+  const [liderError, setLiderError] = useState("");
+  const [validandoLider, setValidandoLider] = useState(false);
+  const [liderValidado, setLiderValidado] = useState(null);
+  const [isReporteFormOpen, setIsReporteFormOpen] = useState(false);
+
+  // PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Cargar reportes de SST
+  const API_REPORTES = import.meta.env.VITE_API_REPORTE;
+  const API_EMPLEADOS = import.meta.env.VITE_API_EMPLEADO;
+
+  // CARGAR REPORTES
+  // CARGAR REPORTES
   const loadReportes = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_REPORTES}?populate=*&pagination[pageSize]=40000`);
+      // Se agrega el filtro filters[tipo_caso][$eq]=salud_general
+      const res = await fetch(`${API_REPORTES}?filters[tipo_caso][$eq]=salud_general&populate=*&pagination[pageSize]=40000`);
       const json = await res.json();
-      const data = json.data || [];
-      setReportes(data);
+      setReportes(json.data || []);
     } catch {
       setReportes([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [API_REPORTES]);
 
   useEffect(() => { loadReportes(); }, [loadReportes]);
 
-  // Extraer opciones únicas dinámicamente para los selectores de filtro
+  // ELIMINAR REPORTE
+  const deleteReporte = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm("¿Estás seguro de que deseas eliminar este reporte?")) return;
+    
+    try {
+      await fetch(`${API_REPORTES}/${id}`, { method: "DELETE" });
+      loadReportes();
+    } catch (error) {
+      alert("Error al eliminar el reporte.");
+    }
+  };
+
+  // EXTRACCIÓN DE OPCIONES PARA FILTROS
   const filterOptions = useMemo(() => {
     const ciudades = new Set();
     const cargos = new Set();
@@ -83,72 +121,6 @@ export default function SST({ user }) {
     };
   }, [reportes]);
 
-  function openCase(r) {
-    setSelectedReporte(r);
-    setPanelOpen(true);
-  }
-
-  const deleteReporte = async (id, e) => {
-    e.stopPropagation();
-    if (!window.confirm("¿Estás seguro de que deseas eliminar este reporte?")) return;
-    
-    try {
-      await fetch(`${API_REPORTES}/${id}`, { method: "DELETE" });
-      loadReportes();
-    } catch (error) {
-      alert("Error al eliminar el reporte.");
-    }
-  };
-
-  const today = new Date();
-
-  // KPIs
-  const kpis = {
-    todos: reportes.length,
-    abierto: reportes.filter(r => r.attributes.estado?.toLowerCase() === "abierto").length,
-    cerrado: reportes.filter(r => r.attributes.estado?.toLowerCase() === "cerrado").length,
-    seguimiento: reportes.filter(r => r.attributes.estado?.toLowerCase() === "seguimiento").length,
-    vencido: reportes.filter(r => {
-      const gs = r.attributes.sstgestions?.data || [];
-      return gs.some(g => g.attributes.temporalidad && new Date(g.attributes.temporalidad) < today);
-    }).length,
-  };
-
-  // Filtros combinados
-  const filtered = reportes.filter(r => {
-    const a = r.attributes;
-    const estado = a.estado?.toLowerCase();
-    
-    if (kpiFilter === "abierto" && estado !== "abierto") return false;
-    if (kpiFilter === "cerrado" && estado !== "cerrado") return false;
-    if (kpiFilter === "seguimiento" && estado !== "seguimiento") return false;
-    if (kpiFilter === "vencido") {
-      const gs = a.sstgestions?.data || [];
-      const vencido = gs.some(g => g.attributes.temporalidad && new Date(g.attributes.temporalidad) < today);
-      if (!vencido) return false;
-    }
-    if (soloMios) {
-      const gs = a.sstgestions?.data || [];
-      if (!gs.some(g => g.attributes.creador === user.nombre)) return false;
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      if (!a.colaborador_nombre?.toLowerCase().includes(q) &&
-          !String(a.colaborador_documento).includes(q) &&
-          !String(r.id).includes(q)) return false;
-    }
-
-    // --- APLICACIÓN DE LOS NUEVOS FILTROS ---
-    if (filterCiudad && a.colaborador_ciudad?.trim() !== filterCiudad) return false;
-    if (filterCargo && a.colaborador_cargo?.trim() !== filterCargo) return false;
-    if (filterArea && a.colaborador_area?.trim() !== filterArea) return false;
-    if (filterDepartamento && a.colaborador_departamento?.trim() !== filterDepartamento) return false;
-    if (filterDireccion && a.colaborador_direccion?.trim() !== filterDireccion) return false;
-
-    return true;
-  });
-
-  // Limpiar todos los filtros avanzados
   const clearSelectFilters = () => {
     setFilterCiudad("");
     setFilterCargo("");
@@ -158,255 +130,292 @@ export default function SST({ user }) {
     setCurrentPage(1);
   };
 
-  // Lógica de Paginación
-  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = filtered.slice(startIndex, startIndex + itemsPerPage);
+  const handleValidarLider = async () => {
+    if (!liderCC.trim()) return setLiderError("Ingrese la cédula del líder.");
+    setValidandoLider(true);
+    setLiderError("");
+    try {
+      const res = await fetch(`${API_EMPLEADOS}?documento=${liderCC.trim()}`);
+      const json = await res.json();
+      if (json.ok && json.data?.length) {
+        setLiderValidado(json.data[0]); 
+        setIsLiderModalOpen(false);
+        setIsReporteFormOpen(true); 
+        setLiderCC("");
+      } else {
+        setLiderError("Líder no encontrado o inactivo.");
+      }
+    } catch {
+      setLiderError("Error de conexión al validar líder.");
+    }
+    setValidandoLider(false);
+  };
 
+  const today = new Date();
+  const kpis = {
+    todos: reportes.length,
+    abierto: reportes.filter(r => r.attributes.estado?.toLowerCase() === "abierto").length,
+    cerrado: reportes.filter(r => r.attributes.estado?.toLowerCase() === "cerrado").length,
+    seguimiento: reportes.filter(r => r.attributes.estado?.toLowerCase() === "seguimiento").length,
+    vencido: reportes.filter(r => (r.attributes.sstgestions?.data || []).some(g => g.attributes.temporalidad && new Date(g.attributes.temporalidad) < today)).length,
+  };
+
+  const filtered = reportes.filter(r => {
+    const a = r.attributes;
+    const estado = a.estado?.toLowerCase();
+    
+    if (kpiFilter !== "todos" && kpiFilter !== "vencido" && estado !== kpiFilter) return false;
+    if (kpiFilter === "vencido" && !(a.sstgestions?.data || []).some(g => g.attributes.temporalidad && new Date(g.attributes.temporalidad) < today)) return false;
+    if (soloMios && !(a.sstgestions?.data || []).some(g => g.attributes.creador === user?.nombre)) return false;
+    
+    if (search && !a.colaborador_nombre?.toLowerCase().includes(search.toLowerCase()) && !String(a.colaborador_documento).includes(search)) return false;
+    
+    if (filterCiudad && a.colaborador_ciudad?.trim() !== filterCiudad) return false;
+    if (filterCargo && a.colaborador_cargo?.trim() !== filterCargo) return false;
+    if (filterArea && a.colaborador_area?.trim() !== filterArea) return false;
+    if (filterDepartamento && a.colaborador_departamento?.trim() !== filterDepartamento) return false;
+    if (filterDireccion && a.colaborador_direccion?.trim() !== filterDireccion) return false;
+
+    return true;
+  });
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+  const paginatedData = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const stats = computeStats(reportes);
 
   return (
-    <div className="max-w-[1400px] mx-auto py-7 px-6 font-sans text-gray-800">
+    <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col gap-6 ">
       
-      {/* KPIs Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-7">
-        {[
-          { key: "todos", label: "Total", color: "bg-[#3c1f1c]" },
-          { key: "abierto", label: "Abiertos", color: "bg-[#F5A623]" },
-          { key: "cerrado", label: "Cerrados", color: "bg-[#38A169]" },
-          { key: "seguimiento", label: "En Seguimiento", color: "bg-[#00B4A6]" },
-          { key: "vencido", label: "Vencidos", color: "bg-[#E53E3E]" },
-        ].map(k => {
-          const isActive = kpiFilter === k.key;
-          return (
-            <div 
-              key={k.key} 
-              className={`bg-white rounded-[10px] py-4 px-5 border ${isActive ? "border-[#3c1f1c]" : "border-gray-200"} cursor-pointer relative overflow-hidden shadow-sm`}
-              onClick={() => {
-                setKpiFilter(kpiFilter === k.key && k.key !== "todos" ? "todos" : k.key);
-                setCurrentPage(1);
-              }}
-            >
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">{k.label}</div>
-              <div className="font-['DM_Sans',sans-serif] text-3xl font-bold text-[#3c1f1c]">{kpis[k.key]}</div>
-              <div className={`absolute bottom-0 left-0 right-0 h-[3px] ${k.key === "todos" && !isActive ? "bg-transparent" : k.color}`} />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Stats Charts */}
-      <div className="font-['DM_Sans',sans-serif] text-lg font-bold text-[#3c1f1c] mb-3.5">Estadísticas</div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <PieChart title="Estado de Casos" data={stats.estadoCasos} />
-        <BarChart title="IMC" data={stats.imc} color="#F5A623" />
-        <PieChart title="Entidad" data={stats.entidad} />
-        <BarChart title="Acción Realizada" data={stats.accion} color="#00B4A6" />
-        <BarChart title="Sistema Afectado" data={stats.sistema} color="#E53E3E" />
-        <PieChart title="Género" data={stats.genero} />
-        <BarChart title="Categoría" data={stats.categoria} color="#805AD5" />
-        <BarChart title="Diagnósticos CIE" data={stats.diagnostico} color="#D69E2E" />
-        <BarChart title="Por Cargo" data={stats.cargo} color="#3182CE" />
-        <LineChart title="Edad (rangos)" data={stats.edadRango} color="#10B981" />
-        <LineChart title="Antigüedad (rangos)" data={stats.antiguedadRango} color="#F59E0B" />
-        <BarChart title="Área" data={stats.area} color="#0F766E" />
-      </div>
-
-      {/* Tabla Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="font-['DM_Sans',sans-serif] text-lg font-bold text-[#3c1f1c]">Historial de Casos</div>
-      </div>
-      
-      {/* Filtros */}
-      <div className="flex flex-wrap gap-2.5 mb-4 p-3 bg-gray-50 rounded-md border border-gray-200 text-[11px]">
+      {/* CABECERA */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Salud General</h1>
+          <p className="text-sm text-gray-500">Gestión global de ausentismos y casos de salud</p>
+        </div>
         <button 
-          className="flex items-center gap-1.5 cursor-pointer bg-transparent border border-gray-300 rounded-full py-1.5 px-3 hover:bg-gray-200 transition-colors disabled:opacity-50" 
-          onClick={loadReportes} 
-          disabled={loading}
+          onClick={() => setIsLiderModalOpen(true)}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
         >
-          <RotateCcw size={16} /> Recargar 
+          <Plus size={16} /> Reporte de Líder
+        </button>
+      </div>
+
+      {/* KPIs Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[
+          { key: "todos", label: "Total", color: "bg-gray-800" },
+          { key: "abierto", label: "Abiertos", color: "bg-orange-500" },
+          { key: "cerrado", label: "Cerrados", color: "bg-green-600" },
+          { key: "seguimiento", label: "En Seguimiento", color: "bg-teal-600" },
+          { key: "vencido", label: "Vencidos", color: "bg-red-500" },
+        ].map(k => (
+          <div 
+            key={k.key} 
+            className={`bg-white rounded-lg p-4 border transition-all cursor-pointer relative overflow-hidden ${kpiFilter === k.key ? "border-gray-800 shadow-md" : "border-gray-200 hover:border-gray-300"}`}
+            onClick={() => { setKpiFilter(kpiFilter === k.key ? "todos" : k.key); setCurrentPage(1); }}
+          >
+            <div className="text-xs font-semibold uppercase text-gray-500 mb-1">{k.label}</div>
+            <div className="text-3xl font-bold text-gray-800">{kpis[k.key]}</div>
+            <div className={`absolute bottom-0 left-0 right-0 h-1 ${k.key === "todos" && kpiFilter !== "todos" ? "bg-transparent" : k.color}`} />
+          </div>
+        ))}
+      </div>
+
+      {/* ESTADÍSTICAS */}
+      <div>
+        <h2 className="text-lg font-bold text-gray-800 mb-4">Estadísticas</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><PieChart title="Estado de Casos" data={stats.estadoCasos} /></div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="IMC" data={stats.imc} color="#4B5563" /></div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><PieChart title="Entidad" data={stats.entidad} /></div>
+          
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="Acción Realizada" data={stats.accion} color="#4B5563" /></div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="Sistema Afectado" data={stats.sistema} color="#EF4444" /></div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><PieChart title="Género" data={stats.genero} /></div>
+          
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="Categoría" data={stats.categoria} color="#8B5CF6" /></div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="Diagnósticos CIE" data={stats.diagnostico} color="#D97706" /></div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="Por Cargo" data={stats.cargo} color="#3B82F6" /></div>
+          
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><LineChart title="Edad (rangos)" data={stats.edadRango} color="#10B981" /></div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><LineChart title="Antigüedad (rangos)" data={stats.antiguedadRango} color="#F59E0B" /></div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="Área" data={stats.area} color="#0F766E" /></div>
+        </div>
+      </div>
+
+      {/* FILTROS DE TABLA */}
+      <div className="bg-gray-50/80 p-3 rounded-lg border border-gray-200 flex flex-wrap gap-2 items-center">
+        <button onClick={loadReportes} className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 bg-white rounded-md text-sm hover:bg-gray-100 transition-colors disabled:opacity-50" disabled={loading}>
+          <RotateCcw size={14} /> Recargar
         </button>
 
-        <input 
-          className="py-2 px-3 border border-gray-200 rounded-md text-[13px] outline-none focus:border-[#00B4A6] bg-white w-full sm:w-auto" 
-          placeholder="Buscar por nombre o CC" 
-          value={search} 
-          onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} 
-        />
+        <input className="px-3 py-1.5 border border-gray-200 rounded-md text-sm outline-none focus:border-blue-500 min-w-[180px]" placeholder="Buscar nombre o CC..." value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} />
 
-        <select className="py-2 px-3 border border-gray-200 rounded-md text-[13px] outline-none focus:border-[#00B4A6] bg-white" value={filterCiudad} onChange={e => { setFilterCiudad(e.target.value); setCurrentPage(1); }}>
+        <select className="px-3 py-1.5 border border-gray-200 rounded-md text-sm outline-none focus:border-blue-500 bg-white" value={filterCiudad} onChange={e => { setFilterCiudad(e.target.value); setCurrentPage(1); }}>
           <option value="" disabled>Ciudad</option>
           {filterOptions.ciudades.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-
-        <select className="py-2 px-3 border border-gray-200 rounded-md text-[13px] outline-none focus:border-[#00B4A6] bg-white" value={filterCargo} onChange={e => { setFilterCargo(e.target.value); setCurrentPage(1); }}>
+        <select className="px-3 py-1.5 border border-gray-200 rounded-md text-sm outline-none focus:border-blue-500 bg-white" value={filterCargo} onChange={e => { setFilterCargo(e.target.value); setCurrentPage(1); }}>
           <option value="" disabled>Cargo</option>
           {filterOptions.cargos.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-
-        <select className="py-2 px-3 border border-gray-200 rounded-md text-[13px] outline-none focus:border-[#00B4A6] bg-white" value={filterArea} onChange={e => { setFilterArea(e.target.value); setCurrentPage(1); }}>
+        <select className="px-3 py-1.5 border border-gray-200 rounded-md text-sm outline-none focus:border-blue-500 bg-white" value={filterArea} onChange={e => { setFilterArea(e.target.value); setCurrentPage(1); }}>
           <option value="" disabled>Área</option>
           {filterOptions.areas.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
-
-        <select className="py-2 px-3 border border-gray-200 rounded-md text-[13px] outline-none focus:border-[#00B4A6] bg-white" value={filterDepartamento} onChange={e => { setFilterDepartamento(e.target.value); setCurrentPage(1); }}>
+        <select className="px-3 py-1.5 border border-gray-200 rounded-md text-sm outline-none focus:border-blue-500 bg-white" value={filterDepartamento} onChange={e => { setFilterDepartamento(e.target.value); setCurrentPage(1); }}>
           <option value="" disabled>Departamento</option>
           {filterOptions.departamentos.map(d => <option key={d} value={d}>{d}</option>)}
         </select>
-
-        <select className="py-2 px-3 border border-gray-200 rounded-md text-[13px] outline-none focus:border-[#00B4A6] bg-white" value={filterDireccion} onChange={e => { setFilterDireccion(e.target.value); setCurrentPage(1); }}>
+        <select className="px-3 py-1.5 border border-gray-200 rounded-md text-sm outline-none focus:border-blue-500 bg-white" value={filterDireccion} onChange={e => { setFilterDireccion(e.target.value); setCurrentPage(1); }}>
           <option value="" disabled>Dirección</option>
           {filterOptions.direcciones.map(d => <option key={d} value={d}>{d}</option>)}
         </select>
-        
+
         {(filterCiudad || filterCargo || filterArea || filterDepartamento || filterDireccion) && (
-          <button 
-            className="bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors" 
-            onClick={clearSelectFilters}
-          >
+          <button className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md text-xs font-semibold transition-colors" onClick={clearSelectFilters}>
             Limpiar Filtros
           </button>
         )}
 
-        <label className="flex items-center gap-1.5 text-[13px] cursor-pointer ml-1">
-          <input 
-            type="checkbox" 
-            checked={soloMios} 
-            onChange={e => { setSoloMios(e.target.checked); setCurrentPage(1); }} 
-            className="w-3.5 h-3.5 accent-[#00B4A6]"
-          />
-          Solo casos que he atendido
+        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer ml-auto bg-white px-3 py-1.5 border border-gray-200 rounded-md">
+          <input type="checkbox" checked={soloMios} onChange={e => { setSoloMios(e.target.checked); setCurrentPage(1); }} className="rounded accent-blue-600 w-4 h-4" /> 
+          Solo mis casos
         </label>
       </div>
 
-      {/* Tabla Principal */}
-      <div className="bg-white rounded-[10px] shadow-sm border border-gray-200 mb-6">
-        <div className="p-0">
-          <div className="overflow-x-auto">
+      {/* TABLA PRINCIPAL */}
+      <div className="overflow-x-auto w-full border border-gray-100 rounded-lg shadow-sm">
+        <table className="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200">
+              <th className="p-3 font-semibold text-gray-600">ID</th>
+              <th className="p-3 font-semibold text-gray-600">Colaborador</th>
+              <th className="p-3 font-semibold text-gray-600">Cargo y Área</th>
+              <th className="p-3 font-semibold text-gray-600">Categoría</th>
+              <th className="p-3 font-semibold text-gray-600">Estado</th>
+              <th className="p-3 font-semibold text-gray-600">Fecha</th>
+              <th className="p-3 font-semibold text-gray-600 text-center">Seg.</th>
+              <th className="p-3 font-semibold text-gray-600 text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
             {loading ? (
-              <div className="text-center p-10 text-gray-500">
-                <span className="inline-block w-5 h-5 border-2 border-gray-200 border-t-[#00B4A6] rounded-full animate-spin mr-2 align-middle" />
-                Cargando...
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center p-10 text-gray-400 text-sm">No hay casos con los filtros seleccionados.</div>
+              <tr><td colSpan="8" className="p-8 text-center text-gray-500">Cargando...</td></tr>
+            ) : paginatedData.length === 0 ? (
+              <tr><td colSpan="8" className="p-8 text-center text-gray-500">No se encontraron casos.</td></tr>
             ) : (
-              <>
-                <table className="w-full border-collapse text-[13px]">
-                  <thead>
-                    <tr>
-                      <th className="text-left py-2.5 px-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b-2 border-gray-200">ID</th>
-                      <th className="text-left py-2.5 px-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b-2 border-gray-200">Colaborador</th>
-                      <th className="text-left py-2.5 px-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b-2 border-gray-200">Cargo y Área</th>
-                      <th className="text-left py-2.5 px-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b-2 border-gray-200">Categoría</th>
-                      <th className="text-left py-2.5 px-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b-2 border-gray-200">Estado</th>
-                      <th className="text-left py-2.5 px-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b-2 border-gray-200">Fecha Reporte</th>
-                      <th className="text-left py-2.5 px-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b-2 border-gray-200">Seg.</th>
-                      <th className="text-left py-2.5 px-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b-2 border-gray-200">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedData.map(r => {
-                      const a = r.attributes;
-                      const nSeg = a.sstgestions?.data?.length || 0;
-                      return (
-                        <tr key={r.id} className="cursor-pointer hover:bg-[#E6F7F6]" onClick={() => openCase(r)}>
-                          <td className="py-3 px-3.5 border-b border-gray-100 align-middle font-bold text-[#3c1f1c]">#{r.id}</td>
-                          <td className="py-3 px-3.5 border-b border-gray-100 align-middle">
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex-shrink-0">
-                                <Avatar src={a.colaborador_foto} name={a.colaborador_nombre} size={34} className="w-[34px] h-[34px] rounded-full object-cover bg-gray-200" />
-                              </div>
-                              <div>
-                                <div className="font-semibold text-[13px]">{a.colaborador_nombre}</div>
-                                <div className="text-[11px] text-gray-500">{a.colaborador_documento}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3.5 border-b border-gray-100 align-middle">
-                            <div className="text-[13px] font-semibold">{a.colaborador_cargo || "—"}</div>
-                            <div className="text-[11px] text-gray-500">{a.colaborador_area || "—"}</div>
-                          </td>
-                          <td className="py-3 px-3.5 border-b border-gray-100 align-middle">
-                            <div>{a.categoria || "—"}</div>
-                          </td>
-                          <td className="py-3 px-3.5 border-b border-gray-100 align-middle">
-                            <span className={`inline-flex items-center py-[3px] px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getBadgeClasses(a.estado)}`}>
-                              {badgeLabel(a.estado)}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3.5 border-b border-gray-100 align-middle text-gray-600">
-                            {fmtDate(a.fecha_creacion_manual)}
-                          </td>
-                          <td className="py-3 px-3.5 border-b border-gray-100 align-middle">
-                            {nSeg > 0
-                              ? <span className="inline-flex items-center gap-1 bg-[#FAF5FF] text-[#805AD5] text-[11px] font-bold py-[3px] px-2 rounded-full">{nSeg}</span>
-                              : <span className="text-gray-400 text-xs">—</span>}
-                          </td>
-                          <td className="py-3 px-3.5 border-b border-gray-100 align-middle">
-                            <button 
-                              className="bg-red-100 text-red-600 hover:bg-red-200 transition-colors py-1.5 px-3 rounded-md text-xs font-semibold" 
-                              onClick={(e) => deleteReporte(r.id, e)}
-                              title="Eliminar"
-                            >
-                              Eliminar
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              paginatedData.map(r => {
+                const a = r.attributes;
+                const nSeg = a.sstgestions?.data?.length || 0;
                 
-                {/* Paginación */}
-                <div className="flex items-center justify-between p-3 border-t border-gray-200 text-[13px] text-gray-600">
-                  <div>
-                    Mostrando <strong>{startIndex + 1}</strong> - <strong>{Math.min(startIndex + itemsPerPage, filtered.length)}</strong> de <strong>{filtered.length}</strong> registros
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button 
-                      className="bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
-                      disabled={currentPage === 1}
-                    >
-                      Anterior
-                    </button>
-                    <span>
-                      Página <strong>{currentPage}</strong> de <strong>{totalPages}</strong>
-                    </span>
-                    <button 
-                      className="bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
-                      disabled={currentPage === totalPages}
-                    >
-                      Siguiente
-                    </button>
-                  </div>
-                </div>
-              </>
+                return (
+                  <tr key={r.id} onClick={() => { setSelectedReporte(r); setPanelOpen(true); }} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0 cursor-pointer">
+                    <td className="p-3 font-bold text-gray-800">#{r.id}</td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-3">
+                        <AvatarInline src={a.colaborador_foto} name={a.colaborador_nombre} />
+                        <div>
+                          <div className="font-medium text-gray-800">{a.colaborador_nombre}</div>
+                          <div className="text-xs text-gray-500">{a.colaborador_documento}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <div className="text-gray-700 font-medium">{a.colaborador_cargo || "—"}</div>
+                      <div className="text-gray-500 text-xs">{a.colaborador_area || "—"}</div>
+                    </td>
+                    <td className="p-3 text-gray-700">{a.categoria || "—"}</td>
+                    <td className="p-3">
+                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getBadgeClasses(a.estado)}`}>
+                        {badgeLabel(a.estado)}
+                      </span>
+                    </td>
+                    <td className="p-3 text-gray-600 whitespace-nowrap">{fmtDate(a.fecha_creacion_manual)}</td>
+                    <td className="p-3 text-center">
+                      {nSeg > 0 ? (
+                        <span className="bg-purple-50 text-purple-700 text-xs font-bold px-2.5 py-1 rounded-full border border-purple-200">{nSeg}</span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-center">
+                      <button 
+                        className="px-2.5 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-md text-xs font-semibold transition-colors border border-red-100"
+                        onClick={(e) => deleteReporte(r.id, e)}
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
+          </tbody>
+        </table>
+        
+        {/* Paginación */}
+        <div className="flex items-center justify-between border-t border-gray-100 p-4 bg-white">
+          <span className="text-sm text-gray-500">Página {currentPage} de {totalPages}</span>
+          <div className="flex gap-2">
+            <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="px-3 py-1.5 border border-gray-200 rounded-md text-sm disabled:opacity-50 hover:bg-gray-50">Anterior</button>
+            <button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)} className="px-3 py-1.5 border border-gray-200 rounded-md text-sm disabled:opacity-50 hover:bg-gray-50">Siguiente</button>
           </div>
         </div>
       </div>
 
+      {/* =========================================
+          MODAL 1: SOLICITAR CC DEL LÍDER
+          ========================================= */}
+      {isLiderModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-11/12 max-w-sm p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Acceso Líder</h2>
+              <button onClick={() => setIsLiderModalOpen(false)} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">Ingrese la cédula del líder para registrar un nuevo caso en su nombre.</p>
+            <input 
+              type="number" 
+              value={liderCC}
+              onChange={(e) => setLiderCC(e.target.value)}
+              placeholder="Ej: 10203040"
+              className="w-full p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 mb-2"
+              onKeyDown={e => e.key === "Enter" && handleValidarLider()}
+            />
+            {liderError && <p className="text-xs text-red-500 mb-4">{liderError}</p>}
+            <button 
+              onClick={handleValidarLider} 
+              disabled={validandoLider}
+              className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md font-medium text-sm transition-colors"
+            >
+              {validandoLider ? "Validando..." : "Continuar"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================
+          MODAL 2: FORMULARIO DE REPORTE
+          ========================================= */}
+      {isReporteFormOpen && liderValidado && (
+        <ReporteForm 
+          user={liderValidado} // Pasamos el líder validado como creador
+          onClose={() => setIsReporteFormOpen(false)}
+          onSaved={() => {
+            setIsReporteFormOpen(false);
+            loadReportes(); // Recargar la tabla SST
+          }}
+        />
+      )}
+
+      {/* PANEL DE CASO EXISTENTE */}
       <CasePanel
         reporte={selectedReporte}
         open={panelOpen}
-        onClose={() => {
-          setPanelOpen(false);
-          setSelectedReporte(null);
-        }}
+        onClose={() => { setPanelOpen(false); setSelectedReporte(null); }}
         user={user}
-        onGestionAdded={() => {
-          loadReportes();
-          if (selectedReporte) {
-            fetch(`${API_REPORTES}/${selectedReporte.id}?populate=*`)
-              .then(r => r.json())
-              .then(j => { if (j.data) setSelectedReporte(j.data); })
-              .catch(() => {});
-          }
-        }}
+        onGestionAdded={() => loadReportes()}
       />
     </div>
   );

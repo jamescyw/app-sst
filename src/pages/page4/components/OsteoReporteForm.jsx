@@ -1,9 +1,9 @@
 import { useState } from "react";
 
 const API_EMPLEADOS = import.meta.env.VITE_API_EMPLEADO;
-const API_REPORTES = import.meta.env.VITE_API_REPORTE;
+// NUEVA VARIABLE
+const API_REPORTES = import.meta.env.VITE_API_REPORTE_OSTEO;
 
-// Componente de Avatar integrado
 const AvatarInline = ({ src, name, size = 30 }) => (
   src ? (
     <img src={src} alt={name} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: "1px solid #e5e7eb" }} />
@@ -60,31 +60,31 @@ function CollabSelector({ equipo, onSelect, selected }) {
 
   return (
     <div>
-      <div className="form-control" style={{ display: "flex", gap: 6, padding: "4px 8px", marginBottom: 6 }}>
-        <input style={{ flex: 1, border: "none", outline: "none", fontSize: 13, fontFamily: "var(--font-main)" }} placeholder="Buscar por nombre o CC..." value={search} onChange={e => { setSearch(e.target.value); setApiResult(null); setApiError(""); }} />
-        <button className="btn btn-primary btn-sm" onClick={searchByDoc} disabled={apiLoading}>{apiLoading ? "..." : "Buscar CC"}</button>
+      <div className="flex gap-2 mb-2 p-1">
+        <input className="flex-1 p-2 border border-gray-300 rounded text-sm outline-none" placeholder="Buscar por nombre o CC..." value={search} onChange={e => { setSearch(e.target.value); setApiResult(null); setApiError(""); }} />
+        <button className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm disabled:opacity-50" onClick={searchByDoc} disabled={apiLoading}>{apiLoading ? "..." : "Buscar CC"}</button>
       </div>
-      {apiError && <div style={{ fontSize: 12, color: "var(--red)", marginBottom: 6 }}>{apiError}</div>}
-      <div style={{ border: "1.5px solid var(--gray-200)", borderRadius: "var(--radius-sm)", maxHeight: 180, overflowY: "auto" }}>
+      {apiError && <div className="text-xs text-red-500 mb-2">{apiError}</div>}
+      <div className="border border-gray-200 rounded-md max-h-48 overflow-y-auto">
         {apiResult && (
-          <div className="collab-select-item" style={{ background: "var(--teal-light)" }} onClick={() => handleSelect(apiResult)}>
+          <div className="flex items-center gap-3 p-2 hover:bg-gray-50 cursor-pointer bg-teal-50" onClick={() => handleSelect(apiResult)}>
             <AvatarInline src={apiResult.foto} name={apiResult.nombre} size={30} />
-            <div><div style={{ fontWeight: 600 }}>{apiResult.nombre}</div><div style={{ fontSize: 11, color: "var(--gray-500)" }}>{apiResult.document_number} · {apiResult.cargo}</div></div>
+            <div><div className="font-semibold text-sm">{apiResult.nombre}</div><div className="text-xs text-gray-500">{apiResult.document_number} · {apiResult.cargo}</div></div>
           </div>
         )}
         {filtered.map(e => (
-          <div key={e.document_number} className="collab-select-item" style={selected?.document_number === e.document_number ? { background: "var(--teal-light)" } : {}} onClick={() => handleSelect(e)}>
+          <div key={e.document_number} className={`flex items-center gap-3 p-2 hover:bg-gray-50 cursor-pointer ${selected?.document_number === e.document_number ? "bg-teal-50" : ""}`} onClick={() => handleSelect(e)}>
             <AvatarInline src={e.foto} name={e.nombre} size={30} />
-            <div><div style={{ fontWeight: 600 }}>{e.nombre}</div><div style={{ fontSize: 11, color: "var(--gray-500)" }}>{e.document_number}</div></div>
+            <div><div className="font-semibold text-sm">{e.nombre}</div><div className="text-xs text-gray-500">{e.document_number}</div></div>
           </div>
         ))}
-        {!filtered.length && !apiResult && <div style={{ padding: "12px", fontSize: 12, color: "var(--gray-400)", textAlign: "center" }}>Sin resultados. Busca por CC arriba.</div>}
+        {!filtered.length && !apiResult && <div className="p-3 text-xs text-gray-400 text-center">Sin resultados. Busca por CC arriba.</div>}
       </div>
     </div>
   );
 }
 
-export default function ReporteForm({ equipo, user, onClose, onSaved }) {
+export default function OsteoReporteForm({ equipo, user, onClose, onSaved }) {
   const [collab, setCollab] = useState(null);
   const [form, setForm] = useState({ 
     categoria: "", 
@@ -109,7 +109,6 @@ export default function ReporteForm({ equipo, user, onClose, onSaved }) {
 
     try {
       const payloadData = {
-        tipo_caso: "salud_general",
         colaborador_nombre: collab.nombre || null,
         colaborador_birthday: collab.birthday || null,
         colaborador_ingreso: collab.ingreso || null,
@@ -159,7 +158,7 @@ export default function ReporteForm({ equipo, user, onClose, onSaved }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 my-auto relative animate-in fade-in zoom-in-95 duration-200">
-        <h2 className="text-xl font-bold text-gray-800 border-b pb-3 mb-4">Nuevo Reporte</h2>
+        <h2 className="text-xl font-bold text-gray-800 border-b pb-3 mb-4">Nuevo Reporte Osteomuscular</h2>
         
         <div className="mb-4">
           <label className="block text-sm font-semibold text-gray-700 mb-1">Colaborador *</label>

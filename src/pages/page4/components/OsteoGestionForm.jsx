@@ -1,8 +1,9 @@
 import { useState, useRef } from "react";
 
 const API_CIE = import.meta.env.VITE_API_CIE;
-const API_GESTIONES = import.meta.env.VITE_API_GESTION;
-const API_REPORTES = import.meta.env.VITE_API_REPORTE;
+// NUEVAS VARIABLES
+const API_GESTIONES = import.meta.env.VITE_API_GESTION_OSTEO;
+const API_REPORTES = import.meta.env.VITE_API_REPORTE_OSTEO;
 
 function CieSearch({ value, onSelect }) {
   const [query, setQuery] = useState(value?.codigo || "");
@@ -36,11 +37,11 @@ function CieSearch({ value, onSelect }) {
 
   return (
     <div style={{ position: "relative" }}>
-      <input className="form-control" placeholder="Buscar código CIE-10..." value={query} onChange={e => search(e.target.value)} onFocus={() => results.length && setOpen(true)} />
+      <input className="w-full p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" placeholder="Buscar código CIE-10..." value={query} onChange={e => search(e.target.value)} onFocus={() => results.length && setOpen(true)} />
       {open && results.length > 0 && (
-        <div className="cie-dropdown">
+        <div className="absolute z-50 w-full bg-white border border-gray-200 mt-1 rounded-md shadow-lg max-h-48 overflow-y-auto">
           {results.map(r => (
-            <div key={r.id} className="cie-item" onClick={() => select(r)}>
+            <div key={r.id} className="p-2 hover:bg-gray-100 cursor-pointer text-sm" onClick={() => select(r)}>
               <strong>{r.attributes.codigo}</strong> — {r.attributes.descripcion}
             </div>
           ))}
@@ -50,19 +51,18 @@ function CieSearch({ value, onSelect }) {
   );
 }
 
-export default function GestionForm({ user, reporteId, gestionToEdit, onClose, onSaved }) {
-
-  console.log("Datos del usuario logueado:", user);
-  
+export default function OsteoGestionForm({ user, reporteId, gestionToEdit, onClose, onSaved }) {
   const [form, setForm] = useState(
     gestionToEdit ? {
       fecha_hora: gestionToEdit.attributes.fecha_hora,
       temporalidad: gestionToEdit.attributes.temporalidad || "",
       accion_realizada: gestionToEdit.attributes.accion_realizada || "",
-      sistema_afectado: gestionToEdit.attributes.sistema_afectado || "",
+      // NUEVOS CAMPOS:
+      segmento_corporal: gestionToEdit.attributes.segmento_corporal || "",
+      hemicuerpo_afectado: gestionToEdit.attributes.hemicuerpo_afectado || "",
+      criticidad_sve: gestionToEdit.attributes.criticidad_sve || "",
+      
       estado_registrado: gestionToEdit.attributes.estado_registrado || "seguimiento",
-      peso_kg: gestionToEdit.attributes.peso_kg || "",
-      talla_m: gestionToEdit.attributes.talla_m || "",
       diagnostico: gestionToEdit.attributes.diagnostico || "",
       descripcion: gestionToEdit.attributes.descripcion || "",
       diagnostico_sst: gestionToEdit.attributes.diagnostico_sst || "",
@@ -70,10 +70,12 @@ export default function GestionForm({ user, reporteId, gestionToEdit, onClose, o
       fecha_hora: new Date().toISOString().split("T")[0], 
       temporalidad: "", 
       accion_realizada: "", 
-      sistema_afectado: "", 
+      // NUEVOS CAMPOS:
+      segmento_corporal: "",
+      hemicuerpo_afectado: "",
+      criticidad_sve: "",
+
       estado_registrado: "seguimiento",
-      peso_kg: "", 
-      talla_m: "", 
       diagnostico: "", 
       descripcion: "" ,
       diagnostico_sst: "",
@@ -108,15 +110,18 @@ export default function GestionForm({ user, reporteId, gestionToEdit, onClose, o
             fecha_hora: form.fecha_hora,
             temporalidad: form.temporalidad || null, 
             accion_realizada: form.accion_realizada, 
-            sistema_afectado: form.sistema_afectado, 
+            
+            // NUEVOS CAMPOS
+            segmento_corporal: form.segmento_corporal || null, 
+            hemicuerpo_afectado: form.hemicuerpo_afectado || null,
+            criticidad_sve: form.criticidad_sve || null,
+
             estado_registrado: form.estado_registrado, 
-            peso_kg: form.peso_kg ? parseFloat(form.peso_kg) : null, 
-            talla_m: form.talla_m ? parseFloat(form.talla_m) : null, 
             categoria_cie: cie?.codigo || null, 
             diagnostico: cie?.descripcion || form.diagnostico, 
             descripcion: form.descripcion, 
             diagnostico_sst: form.diagnostico_sst || null,
-            sstreporte: reporteId 
+            sstreporte: reporteId // O osteoreporte: reporteId (Depende de tu schema en Strapi)
           } 
         }),
       });
@@ -137,7 +142,7 @@ export default function GestionForm({ user, reporteId, gestionToEdit, onClose, o
  return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl p-6 my-8 relative animate-in fade-in zoom-in-95 duration-200">
-        <h2 className="text-xl font-bold text-gray-800 border-b pb-3 mb-4">{gestionToEdit ? "Editar Seguimiento" : "Nuevo Seguimiento"}</h2>
+        <h2 className="text-xl font-bold text-gray-800 border-b pb-3 mb-4">{gestionToEdit ? "Editar Seguimiento Osteomuscular" : "Nuevo Seguimiento Osteomuscular"}</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1"><label className="text-sm font-semibold text-gray-700">Fecha</label><input type="date" className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.fecha_hora} onChange={e => set("fecha_hora", e.target.value)} /></div>
@@ -149,28 +154,10 @@ export default function GestionForm({ user, reporteId, gestionToEdit, onClose, o
               <option value="">Seleccionar...</option>
               <option value="Compromiso de Autocuidado">Compromiso de Autocuidado</option>
               <option value="Acta de Seguimiento">Acta de Seguimiento</option>
-              <option value="Autorización de Lonchera">Autorización de Lonchera</option>
+              {/* Autorización de Lonchera eliminada */}
               <option value="Reincorporación Laboral">Reincorporación Laboral</option>
               <option value="Cierre de Reincorporación">Cierre de Reincorporación</option>
               <option value="Seguimiento">Seguimiento</option>
-              <option value="Otro">Otro</option>
-            </select>
-          </div>
-          
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-gray-700">Sistema Afectado</label>
-            <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.sistema_afectado} onChange={e => set("sistema_afectado", e.target.value)}>
-              <option value="">Seleccionar...</option>
-              <option value="Cardiovascular">Cardiovascular</option>
-              <option value="Dermatologico">Dermatologico</option>
-              <option value="Gastrointestinal">Gastrointestinal</option>
-              <option value="Genitourinario">Genitourinario</option>
-              <option value="Inmunologico">Inmunologico</option>
-              <option value="Neurologico">Neurologico</option>
-              <option value="Respiratorio">Respiratorio</option>
-              <option value="Alimenticio">Alimenticio</option>
-              <option value="Neoplasias">Neoplasias</option>
-              <option value="Auditivo">Auditivo</option>
               <option value="Otro">Otro</option>
             </select>
           </div>
@@ -182,11 +169,49 @@ export default function GestionForm({ user, reporteId, gestionToEdit, onClose, o
               <option value="cerrado">Cerrado</option>
             </select>
           </div>
-          
-          <div className="flex gap-4">
-            <div className="flex flex-col gap-1 flex-1"><label className="text-sm font-semibold text-gray-700">Peso (Kg)</label><input type="number" className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" placeholder="60" value={form.peso_kg} onChange={e => set("peso_kg", e.target.value)} /></div>
-            <div className="flex flex-col gap-1 flex-1"><label className="text-sm font-semibold text-gray-700">Talla (M)</label><input type="number" className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" placeholder="1.70" step="0.01" value={form.talla_m} onChange={e => set("talla_m", e.target.value)} /></div>
+
+          {/* REEMPLAZO Y NUEVOS CAMPOS */}
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-semibold text-gray-700">Segmento Corporal</label>
+            <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.segmento_corporal} onChange={e => set("segmento_corporal", e.target.value)}>
+              <option value="">Seleccionar...</option>
+              <option value="hombro">Hombro</option>
+              <option value="codo">Codo</option>
+              <option value="mano">Mano</option>
+              <option value="columna cervical">Columna cervical</option>
+              <option value="columna dorsal">Columna dorsal</option>
+              <option value="columna lumbar">Columna lumbar</option>
+              <option value="cadera">Cadera</option>
+              <option value="rodilla">Rodilla</option>
+              <option value="pie">Pie</option>
+              <option value="dedos mano">Dedos mano</option>
+              <option value="dedos pie">Dedos pie</option>
+              <option value="cuello de pie">Cuello de pie</option>
+              <option value="tronco">Tronco</option>
+            </select>
           </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-semibold text-gray-700">Hemicuerpo Afectado</label>
+            <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.hemicuerpo_afectado} onChange={e => set("hemicuerpo_afectado", e.target.value)}>
+              <option value="">Seleccionar...</option>
+              <option value="izquierda">Izquierda</option>
+              <option value="derecha">Derecha</option>
+              <option value="bilateral">Bilateral</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-semibold text-gray-700">Criticidad según SVE</label>
+            <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.criticidad_sve} onChange={e => set("criticidad_sve", e.target.value)}>
+              <option value="">Seleccionar...</option>
+              <option value="no caso">No caso</option>
+              <option value="caso sintomatico">Caso sintomático</option>
+              <option value="caso probable">Caso probable</option>
+              <option value="caso confirmado">Caso confirmado</option>
+            </select>
+          </div>
+          <div className="hidden md:block"></div> {/* Espaciador */}
           
           <div className="flex flex-col gap-1 md:col-span-2">
             <label className="text-sm font-semibold text-gray-700">Código CIE-10</label>

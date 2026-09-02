@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { calcAge, calcYears, fmtDate, badgeLabel } from "../utils/helpers";
-import GestionForm from "./GestionForm";
+import OsteoGestionForm from "./OsteoGestionForm";
 
-const API_GESTIONES = import.meta.env.VITE_API_GESTION;
-const API_REPORTES = import.meta.env.VITE_API_REPORTE;
+// NUEVAS VARIABLES
+const API_GESTIONES = import.meta.env.VITE_API_GESTION_OSTEO;
+const API_REPORTES = import.meta.env.VITE_API_REPORTE_OSTEO;
 
-// Helper para colores de estado igual al de la tabla
 const getBadgeClasses = (estado = "") => {
   const e = estado.toLowerCase();
   if (e === "abierto") return "bg-orange-50 text-orange-600 border-orange-200";
@@ -15,11 +15,11 @@ const getBadgeClasses = (estado = "") => {
   return "bg-gray-100 text-gray-700 border-gray-200";
 };
 
-export default function CasePanel({ reporte, open, onClose, user, onGestionAdded }) {
+export default function OsteoCasePanel({ reporte, open, onClose, user, onGestionAdded }) {
   const [showGestionForm, setShowGestionForm] = useState(false);
   const [gestionToEdit, setGestionToEdit] = useState(null);
   
-  if (!open || !reporte) return null; // Si no está abierto, no renderiza nada
+  if (!open || !reporte) return null;
 
   const attrs = reporte?.attributes;
   const gestiones = attrs?.sstgestions?.data || [];
@@ -62,33 +62,20 @@ export default function CasePanel({ reporte, open, onClose, user, onGestionAdded
   const age = attrs?.colaborador_birthday ? calcAge(attrs.colaborador_birthday) : null;
   const tenure = attrs?.colaborador_ingreso ? calcYears(attrs.colaborador_ingreso) : null;
 
-  const imcVal = gestiones.length > 0 ? (() => {
-    const last = [...gestiones].reverse().find(g => g.attributes.peso_kg && g.attributes.talla_m);
-    if (!last) return null;
-    return (last.attributes.peso_kg / (last.attributes.talla_m * last.attributes.talla_m)).toFixed(1);
-  })() : null;
-
   return (
     <>
-      {/* OVERLAY OSCURO */}
-      <div 
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity" 
-        onClick={onClose} 
-      />
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity" onClick={onClose} />
 
-      {/* PANEL LATERAL (Se desliza desde la derecha) */}
       <div className="fixed inset-y-0 right-0 w-full md:w-[1000px] bg-white shadow-2xl z-50 flex flex-col animate-in slide-in-from-right duration-300">
         
-        {/* HEADER DEL PANEL */}
         <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50">
           <div>
-            <div className="text-xs font-bold text-teal-600 mb-1 uppercase tracking-wider">Caso #{reporte.id}</div>
+            <div className="text-xs font-bold text-teal-600 mb-1 uppercase tracking-wider">Caso Osteo #{reporte.id}</div>
             <h2 className="text-xl font-bold text-gray-800">{attrs.colaborador_nombre}</h2>
           </div>
           <button className="text-gray-400 hover:text-gray-700 text-3xl leading-none transition-colors" onClick={onClose}>&times;</button>
         </div>
 
-        {/* CUERPO DEL PANEL CON SCROLL */}
         <div className="flex-1 overflow-y-auto p-6 bg-white space-y-6">
           
           {/* FICHA EMPLEADO */}
@@ -117,7 +104,6 @@ export default function CasePanel({ reporte, open, onClose, user, onGestionAdded
                 ["Edad", attrs.colaborador_birthday ? `${fmtDate(attrs.colaborador_birthday)} (${age} años)` : "—"],
                 ["Antigüedad", attrs.colaborador_ingreso ? `${fmtDate(attrs.colaborador_ingreso)} (${tenure} años)` : "—"],
                 ["Género", attrs.genero],
-                ...(imcVal ? [["IMC", `${imcVal} kg/m²`]] : []),
               ].map(([label, val]) => (
                 <div key={label} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
                   <span className="text-gray-500 font-medium">{label}</span>
@@ -189,7 +175,6 @@ export default function CasePanel({ reporte, open, onClose, user, onGestionAdded
               <div className="space-y-3">
                 {[...gestiones].reverse().map(g => {
                   const ga = g.attributes;
-                  const imc = ga.peso_kg && ga.talla_m ? (ga.peso_kg / (ga.talla_m * ga.talla_m)).toFixed(1) : null;
                   return (
                     <div key={g.id} className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow relative">
                       
@@ -208,11 +193,14 @@ export default function CasePanel({ reporte, open, onClose, user, onGestionAdded
                       
                       <div className="font-bold text-gray-800 text-sm mb-2">{ga.accion_realizada?.replace(/_/g, " ")}</div>
                       
+                      {/* NUEVOS CAMPOS AQUÍ */}
                       <div className="space-y-1 text-xs text-gray-600 mb-3">
-                        {ga.sistema_afectado && <div><span className="font-medium text-gray-700">Sistema:</span> {ga.sistema_afectado}</div>}
+                        {ga.segmento_corporal && <div><span className="font-medium text-gray-700">Segmento Corporal:</span> {ga.segmento_corporal}</div>}
+                        {ga.hemicuerpo_afectado && <div><span className="font-medium text-gray-700">Hemicuerpo:</span> {ga.hemicuerpo_afectado}</div>}
+                        {ga.criticidad_sve && <div><span className="font-medium text-gray-700">Criticidad SVE:</span> {ga.criticidad_sve}</div>}
+                        
                         {ga.categoria_cie && <div><span className="font-medium text-gray-700">CIE-10:</span> {ga.categoria_cie} — {ga.diagnostico}</div>}
                         {ga.diagnostico_sst && <div><span className="font-medium text-gray-700">Diagnóstico SST:</span> {ga.diagnostico_sst}</div>}
-                        {imc && <div><span className="font-medium text-gray-700">IMC:</span> {imc} <span className="text-gray-400">(Peso: {ga.peso_kg}kg | Talla: {ga.talla_m}m)</span></div>}
                       </div>
 
                       {ga.descripcion && (
@@ -237,9 +225,8 @@ export default function CasePanel({ reporte, open, onClose, user, onGestionAdded
         </div>
       </div>
 
-      {/* MODAL DE GESTIÓN SOBREPUESTO AL PANEL */}
       {showGestionForm && (
-        <GestionForm 
+        <OsteoGestionForm 
           user={user} 
           reporteId={reporte.id} 
           gestionToEdit={gestionToEdit} 

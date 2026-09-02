@@ -9,11 +9,11 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log("1. Iniciando login con documento:", documento);
 
-      const strapiUrl = `${import.meta.env.VITE_STRAPI_PROFILES}?filters[document_number][$eq]=${documento}&populate=*`;
+      const strapiUrl = `${import.meta.env.VITE_API_PROFILE}?filters[document_number][$eq]=${documento}&populate=*`;
       
       const strapiResponse = await fetch(strapiUrl, {
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_STRAPI_TOKEN}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_TOKEN_STRAPI}`,
           'Content-Type': 'application/json'
         }
       });
@@ -24,8 +24,8 @@ export const AuthProvider = ({ children }) => {
         alert('Acceso denegado: No tienes un perfil autorizado.');
         return { success: false }; // CAMBIO AQUÍ
       }
-
-      const alohaUrl = `${import.meta.env.VITE_API_LOGIN}${documento}`;
+      
+      const alohaUrl = `${import.meta.env.VITE_API_EMPLEADO}?documento=${documento}`;
       const alohaResponse = await fetch(alohaUrl);
       const alohaResult = await alohaResponse.json();
 
