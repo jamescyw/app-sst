@@ -2,8 +2,9 @@ import { useState, useRef } from "react";
 
 const API_CIE = import.meta.env.VITE_API_CIE;
 // NUEVAS VARIABLES
-const API_GESTIONES = import.meta.env.VITE_API_GESTION_OSTEO;
-const API_REPORTES = import.meta.env.VITE_API_REPORTE_OSTEO;
+// En OsteoGestionForm.jsx y OsteoCasePanel.jsx
+const API_GESTIONES = import.meta.env.VITE_API_GESTION; // Sin el _OSTEO
+const API_REPORTES = import.meta.env.VITE_API_REPORTE; // Sin el _OSTEO
 
 function CieSearch({ value, onSelect }) {
   const [query, setQuery] = useState(value?.codigo || "");

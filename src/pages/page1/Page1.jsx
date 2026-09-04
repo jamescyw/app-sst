@@ -70,7 +70,7 @@ export default function SaludGeneralModule() {
     setLoading(true);
     try {
       // Se agrega el filtro filters[tipo_caso][$eq]=salud_general
-      const res = await fetch(`${API_REPORTES}?filters[tipo_caso][$eq]=salud_general&populate=*&pagination[pageSize]=40000`);
+      const res = await fetch(`${API_REPORTES}?filters[tipo_caso][$eq]=salud_general&populate=*`);
       const json = await res.json();
       setReportes(json.data || []);
     } catch {

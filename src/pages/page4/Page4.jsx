@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { fmtDate, badgeLabel } from "./utils/helpers";
-import { computeOsteoStats } from "./utils/osteoStats"; // Actualizado
+import { computeOsteoStats } from "./utils/osteoStats";
 import { RotateCcw, Plus } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 // Gráficas y Modales
-import OsteoCasePanel from "./components/OsteoCasePanel"; // Actualizado
+import OsteoCasePanel from "./components/OsteoCasePanel";
 import BarChart from "./charts/BarChart";
 import PieChart from "./charts/PieChart";
 import LineChart from "./charts/LineChart";
-import OsteoReporteForm from "./components/OsteoReporteForm"; // Actualizado
+import OsteoReporteForm from "./components/OsteoReporteForm";
 
 // Utilidad para colores de estado
 const getBadgeClasses = (estado = "") => {
@@ -30,7 +31,9 @@ const AvatarInline = ({ src, name }) => (
   )
 );
 
-export default function OsteomuscularModule({ user }) {
+export default function OsteomuscularModule() {
+  const { user } = useAuth();
+
   const [reportes, setReportes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [kpiFilter, setKpiFilter] = useState("todos");
@@ -56,14 +59,13 @@ export default function OsteomuscularModule({ user }) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // NUEVAS VARIABLES DE ENTORNO
-  const API_REPORTES = import.meta.env.VITE_API_REPORTE_OSTEO; 
+  const API_REPORTES = import.meta.env.VITE_API_REPORTE; 
   const API_EMPLEADOS = import.meta.env.VITE_API_EMPLEADO;
 
   const loadReportes = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_REPORTES}?populate=*&pagination[pageSize]=40000`);
+      const res = await fetch(`${API_REPORTES}?filters[tipo_caso][$eq]=osteomuscular&populate=*`);
       const json = await res.json();
       setReportes(json.data || []);
     } catch {

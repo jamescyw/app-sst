@@ -1,8 +1,7 @@
 import { useState } from "react";
 
 const API_EMPLEADOS = import.meta.env.VITE_API_EMPLEADO;
-// NUEVA VARIABLE
-const API_REPORTES = import.meta.env.VITE_API_REPORTE_OSTEO;
+const API_REPORTES = import.meta.env.VITE_API_REPORTE;
 
 const AvatarInline = ({ src, name, size = 30 }) => (
   src ? (
@@ -109,6 +108,7 @@ export default function OsteoReporteForm({ equipo, user, onClose, onSaved }) {
 
     try {
       const payloadData = {
+        tipo_caso: "osteomuscular",
         colaborador_nombre: collab.nombre || null,
         colaborador_birthday: collab.birthday || null,
         colaborador_ingreso: collab.ingreso || null,

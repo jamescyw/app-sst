@@ -3,8 +3,9 @@ import { calcAge, calcYears, fmtDate, badgeLabel } from "../utils/helpers";
 import OsteoGestionForm from "./OsteoGestionForm";
 
 // NUEVAS VARIABLES
-const API_GESTIONES = import.meta.env.VITE_API_GESTION_OSTEO;
-const API_REPORTES = import.meta.env.VITE_API_REPORTE_OSTEO;
+// En OsteoGestionForm.jsx y OsteoCasePanel.jsx
+const API_GESTIONES = import.meta.env.VITE_API_GESTION; // Sin el _OSTEO
+const API_REPORTES = import.meta.env.VITE_API_REPORTE; // Sin el _OSTEO
 
 const getBadgeClasses = (estado = "") => {
   const e = estado.toLowerCase();
