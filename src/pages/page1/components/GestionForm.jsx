@@ -1,8 +1,8 @@
 import { useState, useRef } from "react";
 
 const API_CIE = import.meta.env.VITE_API_CIE;
-const API_GESTIONES = import.meta.env.VITE_API_GESTION;
-const API_REPORTES = import.meta.env.VITE_API_REPORTE;
+const API_GESTIONES = import.meta.env.VITE_API_GESTION_SG;
+const API_REPORTES = import.meta.env.VITE_API_REPORTE_SG;
 
 function CieSearch({ value, onSelect }) {
   const [query, setQuery] = useState(value?.codigo || "");

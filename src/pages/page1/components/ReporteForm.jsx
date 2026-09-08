@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 const API_EMPLEADOS = import.meta.env.VITE_API_EMPLEADO;
-const API_REPORTES = import.meta.env.VITE_API_REPORTE;
+const API_REPORTES = import.meta.env.VITE_API_REPORTE_SG;
 
 // Componente de Avatar integrado
 const AvatarInline = ({ src, name, size = 30 }) => (

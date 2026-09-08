@@ -61,7 +61,7 @@ export default function SaludGeneralModule() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const API_REPORTES = import.meta.env.VITE_API_REPORTE;
+  const API_REPORTES = import.meta.env.VITE_API_REPORTE_SG;
   const API_EMPLEADOS = import.meta.env.VITE_API_EMPLEADO;
 
   // CARGAR REPORTES

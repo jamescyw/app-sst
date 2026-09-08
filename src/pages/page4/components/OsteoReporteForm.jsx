@@ -87,7 +87,6 @@ export default function OsteoReporteForm({ equipo, user, onClose, onSaved }) {
   const [collab, setCollab] = useState(null);
   const [form, setForm] = useState({ 
     categoria: "", 
-    genero: "", 
     fecha: new Date().toISOString().split("T")[0], 
     tipo_entidad: "", 
     nombre_entidad: "", 
@@ -101,41 +100,54 @@ export default function OsteoReporteForm({ equipo, user, onClose, onSaved }) {
 
   async function submit() {
     if (!collab) { setError("Selecciona un colaborador."); return; }
-    if (!form.categoria || !form.genero || !form.tipo_entidad) { setError("Completa los campos obligatorios."); return; }
+    // Retiramos la validación del género ya que ahora viene automático
+    if (!form.categoria || !form.tipo_entidad) { setError("Completa los campos obligatorios."); return; }
     
     setSaving(true); 
     setError("");
 
     try {
+      
+
       const payloadData = {
-        tipo_caso: "osteomuscular",
-        colaborador_nombre: collab.nombre || null,
-        colaborador_birthday: collab.birthday || null,
-        colaborador_ingreso: collab.ingreso || null,
-        colaborador_celular: collab.Celular || null,
-        colaborador_correo: collab.correo || null,
-        colaborador_foto: collab.foto || "",
-        colaborador_ciudad: collab.ciudad || null,
-        colaborador_documento: collab.document_number || null,
-        colaborador_cargo: collab.cargo || null,
-        colaborador_area: collab.area_nombre || null,
-        colaborador_departamento: collab.departamento || null,
-        colaborador_direccion: collab.direction || null,
-        genero: form.genero, 
         categoria: form.categoria, 
         tipo_entidad: form.tipo_entidad, 
         nombre_entidad: form.nombre_entidad, 
         descripcion: form.descripcion, 
         estado: "abierto", 
+        tipo_caso: "osteomuscular",
         fecha_creacion_manual: form.fecha, 
-        creador_reporte_nombre: user.nombre
+        
+        // Data del colaborador traída de Buk (empleados3)
+        colaborador: [{
+          nombre: collab.nombre || null,
+          documento: String(collab.document_number) || null,
+          celular: collab.Celular || null,
+          correo: collab.correo || null,
+          foto: collab.foto || "",
+          ciudad: collab.ciudad || null,
+          cargo: collab.cargo || null,
+          area: collab.area_nombre || null,
+          departamento: collab.departamento || null,
+          direccion: collab.direction || null,
+          nacimiento: collab.birthday || null,
+          antiguedad: collab.ingreso || null,
+          genero: collab.gender || null 
+        }],
+        
+        // Data del líder (quien reporta)
+        creador: [{
+          nombre: user.nombre,
+          documento: String(user.document_number) || "",
+          foto: user.foto || ""
+        }]
       };
 
       const formData = new FormData();
       formData.append("data", JSON.stringify(payloadData));
 
       if (file) {
-        formData.append("files.archivo", file); 
+        formData.append("files.adjuntos", file); 
       }
 
       const res = await fetch(API_REPORTES, {
@@ -166,8 +178,10 @@ export default function OsteoReporteForm({ equipo, user, onClose, onSaved }) {
           {collab && (
             <div className="flex items-center gap-3 p-3 bg-teal-50 border border-teal-100 rounded-md mt-3 text-sm">
               <AvatarInline src={collab.foto} name={collab.nombre} size={32} />
-              <span className="font-semibold text-teal-900">{collab.nombre}</span>
-              <span className="text-teal-700">· {collab.document_number}</span>
+              <div className="flex flex-col">
+                <span className="font-semibold text-teal-900">{collab.nombre}</span>
+                <span className="text-teal-700">· CC: {collab.document_number} {collab.gender ? `· Sexo: ${collab.gender}` : ''}</span>
+              </div>
             </div>
           )}
         </div>
@@ -184,18 +198,7 @@ export default function OsteoReporteForm({ equipo, user, onClose, onSaved }) {
               <option value="Otro">Otro</option>
             </select>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-gray-700">Género *</label>
-            <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.genero} onChange={e => set("genero", e.target.value)}>
-              <option value="">Seleccionar...</option>
-              <option value="Mujer">Mujer</option>
-              <option value="Hombre">Hombre</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-gray-700">Fecha de Creación</label>
-            <input type="date" className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.fecha} onChange={e => set("fecha", e.target.value)} />
-          </div>
+          
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold text-gray-700">Tipo de Entidad *</label>
             <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.tipo_entidad} onChange={e => set("tipo_entidad", e.target.value)}>
@@ -206,10 +209,17 @@ export default function OsteoReporteForm({ equipo, user, onClose, onSaved }) {
               <option value="Otro">Otro</option>
             </select>
           </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-semibold text-gray-700">Fecha de Creación</label>
+            <input type="date" className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.fecha} onChange={e => set("fecha", e.target.value)} />
+          </div>
+          
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold text-gray-700">Nombre de la Entidad</label>
             <input className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" placeholder="Ej: Sanitas..." value={form.nombre_entidad} onChange={e => set("nombre_entidad", e.target.value)} />
           </div>
+
           <div className="col-span-1 md:col-span-2 flex flex-col gap-1">
             <label className="text-sm font-semibold text-gray-700">Descripción Detallada</label>
             <textarea className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" rows={3} placeholder="Describa la situación..." value={form.descripcion} onChange={e => set("descripcion", e.target.value)} />

@@ -1,10 +1,8 @@
 import { useState, useRef } from "react";
 
 const API_CIE = import.meta.env.VITE_API_CIE;
-// NUEVAS VARIABLES
-// En OsteoGestionForm.jsx y OsteoCasePanel.jsx
-const API_GESTIONES = import.meta.env.VITE_API_GESTION; // Sin el _OSTEO
-const API_REPORTES = import.meta.env.VITE_API_REPORTE; // Sin el _OSTEO
+const API_GESTIONES = import.meta.env.VITE_API_GESTION; 
+const API_REPORTES = import.meta.env.VITE_API_REPORTE; 
 
 function CieSearch({ value, onSelect }) {
   const [query, setQuery] = useState(value?.codigo || "");
@@ -53,39 +51,44 @@ function CieSearch({ value, onSelect }) {
 }
 
 export default function OsteoGestionForm({ user, reporteId, gestionToEdit, onClose, onSaved }) {
+  
+  const dExtra = gestionToEdit?.attributes?.datos_adicionales || {};
+
   const [form, setForm] = useState(
     gestionToEdit ? {
-      fecha_hora: gestionToEdit.attributes.fecha_hora,
+      fecha_creacion_manual: gestionToEdit.attributes.fecha_creacion_manual,
       temporalidad: gestionToEdit.attributes.temporalidad || "",
       accion_realizada: gestionToEdit.attributes.accion_realizada || "",
-      // NUEVOS CAMPOS:
-      segmento_corporal: gestionToEdit.attributes.segmento_corporal || "",
-      hemicuerpo_afectado: gestionToEdit.attributes.hemicuerpo_afectado || "",
-      criticidad_sve: gestionToEdit.attributes.criticidad_sve || "",
-      
-      estado_registrado: gestionToEdit.attributes.estado_registrado || "seguimiento",
-      diagnostico: gestionToEdit.attributes.diagnostico || "",
+      sistema_afectado: gestionToEdit.attributes.sistema_afectado || "",
+      estado: gestionToEdit.attributes.estado || "seguimiento",
+      diagnostico_cie: gestionToEdit.attributes.diagnostico_cie || "",
       descripcion: gestionToEdit.attributes.descripcion || "",
       diagnostico_sst: gestionToEdit.attributes.diagnostico_sst || "",
+      peso_kg: gestionToEdit.attributes.peso_kg || "",
+      talla_m: gestionToEdit.attributes.talla_m || "",
+      segmento_corporal: dExtra.segmento_corporal || "",
+      hemicuerpo_afectado: dExtra.hemicuerpo_afectado || "",
+      criticidad_sve: dExtra.criticidad_sve || "",
     } : { 
-      fecha_hora: new Date().toISOString().split("T")[0], 
+      fecha_creacion_manual: new Date().toISOString().split("T")[0], 
       temporalidad: "", 
       accion_realizada: "", 
-      // NUEVOS CAMPOS:
+      sistema_afectado: "",
+      estado: "seguimiento",
+      diagnostico_cie: "", 
+      descripcion: "" ,
+      diagnostico_sst: "",
+      peso_kg: "",
+      talla_m: "",
       segmento_corporal: "",
       hemicuerpo_afectado: "",
       criticidad_sve: "",
-
-      estado_registrado: "seguimiento",
-      diagnostico: "", 
-      descripcion: "" ,
-      diagnostico_sst: "",
     }
   );
   
   const [cie, setCie] = useState(
-    gestionToEdit?.attributes.categoria_cie 
-      ? { codigo: gestionToEdit.attributes.categoria_cie, descripcion: gestionToEdit.attributes.diagnostico } 
+    gestionToEdit?.attributes.codigo_cie 
+      ? { codigo: gestionToEdit.attributes.codigo_cie, descripcion: gestionToEdit.attributes.diagnostico_cie } 
       : null
   );
   
@@ -102,29 +105,37 @@ export default function OsteoGestionForm({ user, reporteId, gestionToEdit, onClo
       const method = isEditing ? "PUT" : "POST";
       const endpoint = isEditing ? `${API_GESTIONES}/${gestionToEdit.id}` : API_GESTIONES;
 
+      const payload = {
+        data: {
+          fecha_creacion_manual: form.fecha_creacion_manual,
+          temporalidad: form.temporalidad || null, 
+          accion_realizada: form.accion_realizada, 
+          sistema_afectado: form.sistema_afectado || null, 
+          estado: form.estado, 
+          codigo_cie: cie?.codigo || null, 
+          diagnostico_cie: cie?.descripcion || form.diagnostico_cie, 
+          descripcion: form.descripcion, 
+          diagnostico_sst: form.diagnostico_sst || null,
+          peso_kg: form.peso_kg ? Number(form.peso_kg) : null,
+          talla_m: form.talla_m ? Number(form.talla_m) : null,
+          sst_reports_web: reporteId,
+          creador_seguimiento: [{ 
+            nombre: user?.nombre || "Usuario SST", 
+            documento: String(user?.document_number || ""), 
+            foto: user?.foto || "" 
+          }],
+          datos_adicionales: {
+            segmento_corporal: form.segmento_corporal,
+            hemicuerpo_afectado: form.hemicuerpo_afectado,
+            criticidad_sve: form.criticidad_sve
+          }
+        }
+      };
+
       const resGestion = await fetch(endpoint, {
         method: method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          data: { 
-            creador: user?.nombre || "Usuario", 
-            fecha_hora: form.fecha_hora,
-            temporalidad: form.temporalidad || null, 
-            accion_realizada: form.accion_realizada, 
-            
-            // NUEVOS CAMPOS
-            segmento_corporal: form.segmento_corporal || null, 
-            hemicuerpo_afectado: form.hemicuerpo_afectado || null,
-            criticidad_sve: form.criticidad_sve || null,
-
-            estado_registrado: form.estado_registrado, 
-            categoria_cie: cie?.codigo || null, 
-            diagnostico: cie?.descripcion || form.diagnostico, 
-            descripcion: form.descripcion, 
-            diagnostico_sst: form.diagnostico_sst || null,
-            sstreporte: reporteId // O osteoreporte: reporteId (Depende de tu schema en Strapi)
-          } 
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!resGestion.ok) throw new Error("Error guardando gestión.");
@@ -132,7 +143,7 @@ export default function OsteoGestionForm({ user, reporteId, gestionToEdit, onClo
       await fetch(`${API_REPORTES}/${reporteId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: { estado: form.estado_registrado } })
+        body: JSON.stringify({ data: { estado: form.estado } })
       });
 
       onSaved();
@@ -143,35 +154,56 @@ export default function OsteoGestionForm({ user, reporteId, gestionToEdit, onClo
  return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl p-6 my-8 relative animate-in fade-in zoom-in-95 duration-200">
-        <h2 className="text-xl font-bold text-gray-800 border-b pb-3 mb-4">{gestionToEdit ? "Editar Seguimiento Osteomuscular" : "Nuevo Seguimiento Osteomuscular"}</h2>
+        <h2 className="text-xl font-bold text-gray-800 border-b pb-3 mb-4">{gestionToEdit ? "Editar Seguimiento" : "Nuevo Seguimiento"}</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1"><label className="text-sm font-semibold text-gray-700">Fecha</label><input type="date" className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.fecha_hora} onChange={e => set("fecha_hora", e.target.value)} /></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex flex-col gap-1"><label className="text-sm font-semibold text-gray-700">Fecha</label><input type="date" className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.fecha_creacion_manual} onChange={e => set("fecha_creacion_manual", e.target.value)} /></div>
           <div className="flex flex-col gap-1"><label className="text-sm font-semibold text-gray-700">Temporalidad (Vence)</label><input type="date" className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.temporalidad} onChange={e => set("temporalidad", e.target.value)} /></div>
-          
           <div className="flex flex-col gap-1">
+            <label className="text-sm font-semibold text-gray-700">Actualizar Estado</label>
+            <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.estado} onChange={e => set("estado", e.target.value)}>
+              <option value="seguimiento">En Seguimiento</option>
+              <option value="cerrado">Cerrado</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1 md:col-span-1">
             <label className="text-sm font-semibold text-gray-700">Acción Realizada *</label>
             <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.accion_realizada} onChange={e => set("accion_realizada", e.target.value)}>
               <option value="">Seleccionar...</option>
               <option value="Compromiso de Autocuidado">Compromiso de Autocuidado</option>
               <option value="Acta de Seguimiento">Acta de Seguimiento</option>
-              {/* Autorización de Lonchera eliminada */}
               <option value="Reincorporación Laboral">Reincorporación Laboral</option>
               <option value="Cierre de Reincorporación">Cierre de Reincorporación</option>
               <option value="Seguimiento">Seguimiento</option>
               <option value="Otro">Otro</option>
             </select>
           </div>
-          
+
+          <div className="flex flex-col gap-1 md:col-span-1">
+             <label className="text-sm font-semibold text-gray-700">Peso (Kg)</label>
+             <input type="number" step="0.1" className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" placeholder="Ej: 75.5" value={form.peso_kg} onChange={e => set("peso_kg", e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1 md:col-span-1">
+             <label className="text-sm font-semibold text-gray-700">Talla (m)</label>
+             <input type="number" step="0.01" className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" placeholder="Ej: 1.75" value={form.talla_m} onChange={e => set("talla_m", e.target.value)} />
+          </div>
+
+          {/* CAMPOS ESPECÍFICOS OSTEOMUSCULAR */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-gray-700">Actualizar Estado</label>
-            <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.estado_registrado} onChange={e => set("estado_registrado", e.target.value)}>
-              <option value="seguimiento">En Seguimiento</option>
-              <option value="cerrado">Cerrado</option>
+            <label className="text-sm font-semibold text-gray-700">Sistema Afectado</label>
+            <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.sistema_afectado} onChange={e => set("sistema_afectado", e.target.value)}>
+              <option value="">Seleccionar...</option>
+              <option value="cardiovascular">Cardiovascular</option>
+              <option value="osteomuscular">Osteomuscular</option>
+              <option value="respiratorio">Respiratorio</option>
+              <option value="auditivo">Auditivo</option>
+              <option value="visual">Visual</option>
+              <option value="psicosocial">Psicosocial</option>
+              <option value="otro">Otro</option>
             </select>
           </div>
 
-          {/* REEMPLAZO Y NUEVOS CAMPOS */}
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold text-gray-700">Segmento Corporal</label>
             <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.segmento_corporal} onChange={e => set("segmento_corporal", e.target.value)}>
@@ -202,9 +234,9 @@ export default function OsteoGestionForm({ user, reporteId, gestionToEdit, onClo
             </select>
           </div>
 
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 md:col-span-3">
             <label className="text-sm font-semibold text-gray-700">Criticidad según SVE</label>
-            <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" value={form.criticidad_sve} onChange={e => set("criticidad_sve", e.target.value)}>
+            <select className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500 md:w-1/3" value={form.criticidad_sve} onChange={e => set("criticidad_sve", e.target.value)}>
               <option value="">Seleccionar...</option>
               <option value="no caso">No caso</option>
               <option value="caso sintomatico">Caso sintomático</option>
@@ -212,21 +244,20 @@ export default function OsteoGestionForm({ user, reporteId, gestionToEdit, onClo
               <option value="caso confirmado">Caso confirmado</option>
             </select>
           </div>
-          <div className="hidden md:block"></div> {/* Espaciador */}
           
-          <div className="flex flex-col gap-1 md:col-span-2">
+          <div className="flex flex-col gap-1 md:col-span-3 mt-2 border-t pt-4">
             <label className="text-sm font-semibold text-gray-700">Código CIE-10</label>
-            <CieSearch value={cie} onSelect={c => { setCie(c); set("diagnostico", c.descripcion); }} />
+            <CieSearch value={cie} onSelect={c => { setCie(c); set("diagnostico_cie", c.descripcion); }} />
           </div>
           
-          <div className="flex flex-col gap-1 md:col-span-2"><label className="text-sm font-semibold text-gray-700">Diagnóstico</label><input className="p-2 border border-gray-200 bg-gray-50 rounded-md text-sm outline-none" disabled value={form.diagnostico} onChange={e => set("diagnostico", e.target.value)} placeholder="Auto desde CIE-10..." /></div>
-          <div className="flex flex-col gap-1 md:col-span-2"><label className="text-sm font-semibold text-gray-700">Diagnóstico SST</label><textarea className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" rows={2} placeholder="Descripción del diagnóstico..." value={form.diagnostico_sst} onChange={e => set("diagnostico_sst", e.target.value)} /></div>
-          <div className="flex flex-col gap-1 md:col-span-2"><label className="text-sm font-semibold text-gray-700">Observaciones</label><textarea className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" rows={2} placeholder="Notas adicionales..." value={form.descripcion} onChange={e => set("descripcion", e.target.value)} /></div>
+          <div className="flex flex-col gap-1 md:col-span-3"><label className="text-sm font-semibold text-gray-700">Diagnóstico CIE</label><input className="p-2 border border-gray-200 bg-gray-50 rounded-md text-sm outline-none" disabled value={form.diagnostico_cie} onChange={e => set("diagnostico_cie", e.target.value)} placeholder="Auto desde CIE-10..." /></div>
+          <div className="flex flex-col gap-1 md:col-span-3"><label className="text-sm font-semibold text-gray-700">Diagnóstico SST</label><textarea className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" rows={2} placeholder="Descripción clínica del diagnóstico..." value={form.diagnostico_sst} onChange={e => set("diagnostico_sst", e.target.value)} /></div>
+          <div className="flex flex-col gap-1 md:col-span-3"><label className="text-sm font-semibold text-gray-700">Observaciones y Desarrollo</label><textarea className="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500" rows={3} placeholder="Notas de la consulta, recomendaciones, etc..." value={form.descripcion} onChange={e => set("descripcion", e.target.value)} /></div>
         </div>
 
         {error && <div className="mt-4 p-2 bg-red-50 text-red-600 text-sm rounded-md border border-red-200">{error}</div>}
         
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
           <button className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium transition-colors" onClick={onClose}>Cancelar</button>
           <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50" onClick={submit} disabled={saving}>{saving ? "Guardando..." : "Guardar Gestión"}</button>
         </div>

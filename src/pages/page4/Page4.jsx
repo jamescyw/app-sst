@@ -65,7 +65,9 @@ export default function OsteomuscularModule() {
   const loadReportes = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_REPORTES}?filters[tipo_caso][$eq]=osteomuscular&populate=*`);
+      // API CON LOS POPULATES ESTRUCTURADOS (NIVEL 1 Y 2)
+      const query = "?filters[tipo_caso][$eq]=osteomuscular&populate[0]=colaborador&populate[1]=creador&populate[2]=adjuntos&populate[3]=sst_actions_webs.creador_seguimiento";
+      const res = await fetch(`${API_REPORTES}${query}`);
       const json = await res.json();
       setReportes(json.data || []);
     } catch {
@@ -94,13 +96,14 @@ export default function OsteomuscularModule() {
     const areas = new Set();
     const departamentos = new Set();
     const direcciones = new Set();
+    
     reportes.forEach(r => {
-      const a = r.attributes;
-      if (a.colaborador_ciudad) ciudades.add(a.colaborador_ciudad.trim());
-      if (a.colaborador_cargo) cargos.add(a.colaborador_cargo.trim());
-      if (a.colaborador_area) areas.add(a.colaborador_area.trim());
-      if (a.colaborador_departamento) departamentos.add(a.colaborador_departamento.trim());
-      if (a.colaborador_direccion) direcciones.add(a.colaborador_direccion.trim());
+      const colab = r.attributes.colaborador?.[0] || {};
+      if (colab.ciudad) ciudades.add(colab.ciudad.trim());
+      if (colab.cargo) cargos.add(colab.cargo.trim());
+      if (colab.area) areas.add(colab.area.trim());
+      if (colab.departamento) departamentos.add(colab.departamento.trim());
+      if (colab.direccion) direcciones.add(colab.direccion.trim());
     });
     return {
       ciudades: Array.from(ciudades).sort(),
@@ -142,23 +145,25 @@ export default function OsteomuscularModule() {
     abierto: reportes.filter(r => r.attributes.estado?.toLowerCase() === "abierto").length,
     cerrado: reportes.filter(r => r.attributes.estado?.toLowerCase() === "cerrado").length,
     seguimiento: reportes.filter(r => r.attributes.estado?.toLowerCase() === "seguimiento").length,
-    vencido: reportes.filter(r => (r.attributes.sstgestions?.data || []).some(g => g.attributes.temporalidad && new Date(g.attributes.temporalidad) < today)).length,
+    vencido: reportes.filter(r => (r.attributes.sst_actions_webs?.data || []).some(g => g.attributes.temporalidad && new Date(g.attributes.temporalidad) < today)).length,
   };
 
   const filtered = reportes.filter(r => {
     const a = r.attributes;
+    const colab = a.colaborador?.[0] || {};
     const estado = a.estado?.toLowerCase();
+    const gestiones = a.sst_actions_webs?.data || [];
     
     if (kpiFilter !== "todos" && kpiFilter !== "vencido" && estado !== kpiFilter) return false;
-    if (kpiFilter === "vencido" && !(a.sstgestions?.data || []).some(g => g.attributes.temporalidad && new Date(g.attributes.temporalidad) < today)) return false;
-    if (soloMios && !(a.sstgestions?.data || []).some(g => g.attributes.creador === user?.nombre)) return false;
-    if (search && !a.colaborador_nombre?.toLowerCase().includes(search.toLowerCase()) && !String(a.colaborador_documento).includes(search)) return false;
+    if (kpiFilter === "vencido" && !gestiones.some(g => g.attributes.temporalidad && new Date(g.attributes.temporalidad) < today)) return false;
+    if (soloMios && !gestiones.some(g => g.attributes.creador_seguimiento?.[0]?.nombre === user?.nombre)) return false;
+    if (search && !colab.nombre?.toLowerCase().includes(search.toLowerCase()) && !String(colab.documento).includes(search)) return false;
     
-    if (filterCiudad && a.colaborador_ciudad?.trim() !== filterCiudad) return false;
-    if (filterCargo && a.colaborador_cargo?.trim() !== filterCargo) return false;
-    if (filterArea && a.colaborador_area?.trim() !== filterArea) return false;
-    if (filterDepartamento && a.colaborador_departamento?.trim() !== filterDepartamento) return false;
-    if (filterDireccion && a.colaborador_direccion?.trim() !== filterDireccion) return false;
+    if (filterCiudad && colab.ciudad?.trim() !== filterCiudad) return false;
+    if (filterCargo && colab.cargo?.trim() !== filterCargo) return false;
+    if (filterArea && colab.area?.trim() !== filterArea) return false;
+    if (filterDepartamento && colab.departamento?.trim() !== filterDepartamento) return false;
+    if (filterDireccion && colab.direccion?.trim() !== filterDireccion) return false;
 
     return true;
   });
@@ -169,7 +174,6 @@ export default function OsteomuscularModule() {
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col gap-6 ">
-      
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Salud Osteomuscular</h1>
@@ -183,7 +187,6 @@ export default function OsteomuscularModule() {
         </button>
       </div>
 
-      {/* KPIs Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { key: "todos", label: "Total", color: "bg-gray-800" },
@@ -204,27 +207,21 @@ export default function OsteomuscularModule() {
         ))}
       </div>
 
-      {/* ESTADÍSTICAS OSTEOMUSCULARES */}
       <div>
         <h2 className="text-lg font-bold text-gray-800 mb-4">Estadísticas</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><PieChart title="Estado de Casos" data={stats.estadoCasos} /></div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="Segmento Corporal" data={stats.segmento} color="#EF4444" /></div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="Sistema Afectado" data={stats.sistema} color="#EF4444" /></div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><PieChart title="Entidad" data={stats.entidad} /></div>
           
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="Acción Realizada" data={stats.accion} color="#4B5563" /></div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><PieChart title="Criticidad SVE" data={stats.criticidad} /></div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><PieChart title="Hemicuerpo Afectado" data={stats.hemicuerpo} /></div>
-          
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="Categoría" data={stats.categoria} color="#8B5CF6" /></div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="Diagnósticos CIE" data={stats.diagnostico} color="#D97706" /></div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"><BarChart title="Por Cargo" data={stats.cargo} color="#3B82F6" /></div>
         </div>
       </div>
 
-      {/* FILTROS DE TABLA */}
       <div className="bg-gray-50/80 p-3 rounded-lg border border-gray-200 flex flex-wrap gap-2 items-center">
-        {/* ... Mismos filtros de la tabla original ... */}
         <button onClick={loadReportes} className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 bg-white rounded-md text-sm hover:bg-gray-100 transition-colors disabled:opacity-50" disabled={loading}>
           <RotateCcw size={14} /> Recargar
         </button>
@@ -264,7 +261,6 @@ export default function OsteomuscularModule() {
         </label>
       </div>
 
-      {/* TABLA PRINCIPAL */}
       <div className="overflow-x-auto w-full border border-gray-100 rounded-lg shadow-sm">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
@@ -287,23 +283,24 @@ export default function OsteomuscularModule() {
             ) : (
               paginatedData.map(r => {
                 const a = r.attributes;
-                const nSeg = a.sstgestions?.data?.length || 0;
+                const colab = a.colaborador?.[0] || {};
+                const nSeg = a.sst_actions_webs?.data?.length || 0;
                 
                 return (
                   <tr key={r.id} onClick={() => { setSelectedReporte(r); setPanelOpen(true); }} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0 cursor-pointer">
                     <td className="p-3 font-bold text-gray-800">#{r.id}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-3">
-                        <AvatarInline src={a.colaborador_foto} name={a.colaborador_nombre} />
+                        <AvatarInline src={colab.foto} name={colab.nombre} />
                         <div>
-                          <div className="font-medium text-gray-800">{a.colaborador_nombre}</div>
-                          <div className="text-xs text-gray-500">{a.colaborador_documento}</div>
+                          <div className="font-medium text-gray-800">{colab.nombre}</div>
+                          <div className="text-xs text-gray-500">{colab.documento}</div>
                         </div>
                       </div>
                     </td>
                     <td className="p-3">
-                      <div className="text-gray-700 font-medium">{a.colaborador_cargo || "—"}</div>
-                      <div className="text-gray-500 text-xs">{a.colaborador_area || "—"}</div>
+                      <div className="text-gray-700 font-medium">{colab.cargo || "—"}</div>
+                      <div className="text-gray-500 text-xs">{colab.area || "—"}</div>
                     </td>
                     <td className="p-3 text-gray-700">{a.categoria || "—"}</td>
                     <td className="p-3">
